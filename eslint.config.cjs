@@ -43,10 +43,16 @@ module.exports = [
         },
         {
           selector: 'variableLike',
-          format: ['camelCase'],
+          format: ['camelCase', 'PascalCase'],
           leadingUnderscore: 'allow',
         },
       ],
+    },
+  },
+  {
+    files: ['**/*.{js,cjs,mjs}'],
+    rules: {
+      'no-undef': 'off',
     },
   },
 ];

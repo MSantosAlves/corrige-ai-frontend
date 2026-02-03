@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useRouter, useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 type TaskExtraction = {
   id: string;
@@ -16,13 +16,11 @@ type TaskExtraction = {
 export default function ExtractionDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const classId = params?.classId as string;
-  const taskId = params?.taskId as string;
   const extractionId = params?.extractionId as string;
 
   const [extraction, setExtraction] = useState<TaskExtraction | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!extractionId) {
@@ -32,25 +30,23 @@ export default function ExtractionDetailPage() {
     const fetchExtraction = async () => {
       try {
         setIsLoading(true);
-        setError("");
-        const token = localStorage.getItem("sessionToken");
+        setError('');
+        const token = localStorage.getItem('sessionToken');
         const response = await fetch(
           `http://localhost:3001/extractions/${encodeURIComponent(extractionId)}`,
           {
-            headers: token ? { Authorization: `Bearer ${token}` } : undefined
-          }
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          },
         );
         if (!response.ok) {
           const payload = (await response.json()) as { error?: string };
-          throw new Error(payload.error || "Falha ao carregar análise.");
+          throw new Error(payload.error || 'Falha ao carregar análise.');
         }
         const data = (await response.json()) as TaskExtraction;
         setExtraction(data);
       } catch (fetchError) {
         const message =
-          fetchError instanceof Error
-            ? fetchError.message
-            : "Erro inesperado ao carregar análise.";
+          fetchError instanceof Error ? fetchError.message : 'Erro inesperado ao carregar análise.';
         setError(message);
       } finally {
         setIsLoading(false);
@@ -63,12 +59,12 @@ export default function ExtractionDetailPage() {
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString("pt-BR", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit"
+      return date.toLocaleDateString('pt-BR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
       });
     } catch {
       return dateString;
@@ -90,7 +86,7 @@ export default function ExtractionDetailPage() {
             Detalhes da Análise
           </p>
           <h1 className="mt-2 text-2xl font-semibold text-gray-900">
-            {extraction?.filename || "Carregando..."}
+            {extraction?.filename || 'Carregando...'}
           </h1>
           {extraction && (
             <p className="mt-2 text-sm text-gray-600">
@@ -111,15 +107,13 @@ export default function ExtractionDetailPage() {
           <div className="space-y-6">
             {/* Texto Extraído */}
             <section className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                Texto Extraído
-              </h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Texto Extraído</h2>
               <div className="rounded-lg border border-blue-100 bg-blue-50/60 p-4">
                 <div className="max-h-96 overflow-y-auto rounded-md bg-white p-4">
                   <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
                     {extraction.ocr_extraction_result.text
                       ? String(extraction.ocr_extraction_result.text)
-                      : "Nenhum texto foi extraído"}
+                      : 'Nenhum texto foi extraído'}
                   </p>
                 </div>
               </div>
@@ -127,13 +121,11 @@ export default function ExtractionDetailPage() {
 
             {/* Resultado da Análise */}
             <section className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                Resultado da Análise
-              </h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Resultado da Análise</h2>
               <div className="rounded-lg border border-blue-100 bg-blue-50/60 p-4">
                 <div className="max-h-96 overflow-y-auto rounded-md bg-white p-4">
                   <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
-                    {extraction.analysis_result || "Nenhuma análise disponível"}
+                    {extraction.analysis_result || 'Nenhuma análise disponível'}
                   </p>
                 </div>
               </div>

@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useRouter, useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 type Task = {
   id: string;
@@ -37,17 +37,17 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [classInfo, setClassInfo] = useState<ClassItem | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [newTaskDescription, setNewTaskDescription] = useState("");
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskDescription, setNewTaskDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Analysis view states
   const [selectedTaskForAnalysis, setSelectedTaskForAnalysis] = useState<Task | null>(null);
   const [extractions, setExtractions] = useState<TaskExtraction[]>([]);
   const [isLoadingExtractions, setIsLoadingExtractions] = useState(false);
-  const [extractionsError, setExtractionsError] = useState("");
+  const [extractionsError, setExtractionsError] = useState('');
 
   useEffect(() => {
     if (!classId) {
@@ -56,16 +56,16 @@ export default function TasksPage() {
 
     const fetchClassInfo = async () => {
       try {
-        const userId = localStorage.getItem("sessionUserId");
+        const userId = localStorage.getItem('sessionUserId');
         if (!userId) {
           return;
         }
-        const token = localStorage.getItem("sessionToken");
+        const token = localStorage.getItem('sessionToken');
         const response = await fetch(
           `http://localhost:3001/classes?user_id=${encodeURIComponent(userId)}`,
           {
-            headers: token ? { Authorization: `Bearer ${token}` } : undefined
-          }
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          },
         );
         if (!response.ok) {
           return;
@@ -91,27 +91,25 @@ export default function TasksPage() {
     const fetchTasks = async () => {
       try {
         setIsLoading(true);
-        setError("");
+        setError('');
 
         // Fetch tasks for this class
-        const token = localStorage.getItem("sessionToken");
+        const token = localStorage.getItem('sessionToken');
         const tasksResponse = await fetch(
           `http://localhost:3001/tasks?class_id=${encodeURIComponent(classId)}`,
           {
-            headers: token ? { Authorization: `Bearer ${token}` } : undefined
-          }
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          },
         );
         if (!tasksResponse.ok) {
           const payload = (await tasksResponse.json()) as { error?: string };
-          throw new Error(payload.error || "Falha ao carregar tarefas.");
+          throw new Error(payload.error || 'Falha ao carregar tarefas.');
         }
         const tasksPayload = (await tasksResponse.json()) as { items?: Task[] };
         setTasks(tasksPayload.items ?? []);
       } catch (fetchError) {
         const message =
-          fetchError instanceof Error
-            ? fetchError.message
-            : "Erro inesperado ao carregar tarefas.";
+          fetchError instanceof Error ? fetchError.message : 'Erro inesperado ao carregar tarefas.';
         setError(message);
       } finally {
         setIsLoading(false);
@@ -127,34 +125,32 @@ export default function TasksPage() {
     }
     try {
       setIsSubmitting(true);
-      setError("");
-      const token = localStorage.getItem("sessionToken");
-      const response = await fetch("http://localhost:3001/tasks", {
-        method: "POST",
+      setError('');
+      const token = localStorage.getItem('sessionToken');
+      const response = await fetch('http://localhost:3001/tasks', {
+        method: 'POST',
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          "content-type": "application/json"
+          'content-type': 'application/json',
         },
         body: JSON.stringify({
           class_id: classId,
           title: newTaskTitle.trim(),
-          description: newTaskDescription.trim() || undefined
-        })
+          description: newTaskDescription.trim() || undefined,
+        }),
       });
       if (!response.ok) {
         const payload = (await response.json()) as { error?: string };
-        throw new Error(payload.error || "Falha ao criar tarefa.");
+        throw new Error(payload.error || 'Falha ao criar tarefa.');
       }
       const created = (await response.json()) as Task;
       setTasks((prev) => [created, ...prev]);
-      setNewTaskTitle("");
-      setNewTaskDescription("");
+      setNewTaskTitle('');
+      setNewTaskDescription('');
       setIsModalOpen(false);
     } catch (createError) {
       const message =
-        createError instanceof Error
-          ? createError.message
-          : "Erro inesperado ao criar tarefa.";
+        createError instanceof Error ? createError.message : 'Erro inesperado ao criar tarefa.';
       setError(message);
     } finally {
       setIsSubmitting(false);
@@ -162,10 +158,10 @@ export default function TasksPage() {
   };
 
   const formatDate = (dateString: string | undefined | null) => {
-    if (!dateString) return "";
+    if (!dateString) return '';
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString("pt-BR");
+      return date.toLocaleDateString('pt-BR');
     } catch {
       return dateString;
     }
@@ -174,28 +170,26 @@ export default function TasksPage() {
   const handleTaskClick = async (task: Task) => {
     setSelectedTaskForAnalysis(task);
     setIsLoadingExtractions(true);
-    setExtractionsError("");
+    setExtractionsError('');
     setExtractions([]);
 
     try {
-      const token = localStorage.getItem("sessionToken");
+      const token = localStorage.getItem('sessionToken');
       const response = await fetch(
         `http://localhost:3001/extractions?task_id=${encodeURIComponent(task.id)}`,
         {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined
-        }
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        },
       );
       if (!response.ok) {
         const payload = (await response.json()) as { error?: string };
-        throw new Error(payload.error || "Falha ao carregar análises.");
+        throw new Error(payload.error || 'Falha ao carregar análises.');
       }
       const payload = (await response.json()) as { items?: TaskExtraction[] };
       setExtractions(payload.items ?? []);
     } catch (fetchError) {
       const message =
-        fetchError instanceof Error
-          ? fetchError.message
-          : "Erro inesperado ao carregar análises.";
+        fetchError instanceof Error ? fetchError.message : 'Erro inesperado ao carregar análises.';
       setExtractionsError(message);
     } finally {
       setIsLoadingExtractions(false);
@@ -213,11 +207,9 @@ export default function TasksPage() {
           >
             ← Voltar
           </button>
-          <p className="text-xs font-semibold uppercase tracking-wider text-blue-700">
-            Tarefas
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-blue-700">Tarefas</p>
           <h1 className="mt-2 text-2xl font-semibold text-gray-900">
-            {classInfo?.name ? `Tarefas de ${classInfo.name}` : "Minhas tarefas"}
+            {classInfo?.name ? `Tarefas de ${classInfo.name}` : 'Minhas tarefas'}
           </h1>
           <p className="mt-2 text-sm text-gray-600">
             Gerencie as tarefas da turma e acompanhe o progresso.
@@ -241,9 +233,7 @@ export default function TasksPage() {
           ) : (
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-600">
-                  {tasks.length} tarefa(s) cadastrada(s)
-                </p>
+                <p className="text-sm text-gray-600">{tasks.length} tarefa(s) cadastrada(s)</p>
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(true)}
@@ -260,16 +250,12 @@ export default function TasksPage() {
                     className="cursor-pointer rounded-xl border border-blue-100 bg-blue-50/60 p-4 transition hover:border-blue-200 hover:bg-blue-100"
                   >
                     <div className="flex flex-col gap-2">
-                      <h3 className="text-sm font-semibold text-gray-800">
-                        {task.title}
-                      </h3>
+                      <h3 className="text-sm font-semibold text-gray-800">{task.title}</h3>
                       {task.description && (
                         <p className="text-xs text-gray-600">{task.description}</p>
                       )}
                       {task.due_date && (
-                        <p className="text-xs text-gray-500">
-                          Prazo: {formatDate(task.due_date)}
-                        </p>
+                        <p className="text-xs text-gray-500">Prazo: {formatDate(task.due_date)}</p>
                       )}
                     </div>
                   </li>
@@ -278,18 +264,14 @@ export default function TasksPage() {
             </div>
           )}
 
-          {error && (
-            <p className="mt-4 text-sm text-red-500">{error}</p>
-          )}
+          {error && <p className="mt-4 text-sm text-red-500">{error}</p>}
         </section>
       </div>
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Criar nova tarefa
-            </h2>
+            <h2 className="text-lg font-semibold text-gray-900">Criar nova tarefa</h2>
             <p className="mt-1 text-sm text-gray-600">
               Informe os detalhes da tarefa para continuar.
             </p>
@@ -323,7 +305,7 @@ export default function TasksPage() {
                 onClick={handleCreateTask}
                 className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
               >
-                {isSubmitting ? "Criando..." : "Criar tarefa"}
+                {isSubmitting ? 'Criando...' : 'Criar tarefa'}
               </button>
             </div>
           </div>
@@ -364,9 +346,7 @@ export default function TasksPage() {
                   >
                     <div className="flex items-start justify-between gap-2 mb-3">
                       <div>
-                        <p className="text-sm font-semibold text-gray-800">
-                          {extraction.filename}
-                        </p>
+                        <p className="text-sm font-semibold text-gray-800">{extraction.filename}</p>
                         <p className="text-xs text-gray-500 mt-1">
                           {formatDate(extraction.created_at)}
                         </p>
@@ -375,7 +355,7 @@ export default function TasksPage() {
                         type="button"
                         onClick={() => {
                           router.push(
-                            `/classes/${classId}/tasks/${selectedTaskForAnalysis.id}/extraction/${extraction.id}`
+                            `/classes/${classId}/tasks/${selectedTaskForAnalysis.id}/extraction/${extraction.id}`,
                           );
                           setSelectedTaskForAnalysis(null);
                         }}
@@ -391,7 +371,7 @@ export default function TasksPage() {
                           Análise
                         </p>
                         <p className="mt-2 text-sm text-gray-700 whitespace-pre-line line-clamp-3">
-                          {extraction.analysis_result || "Sem análise disponível"}
+                          {extraction.analysis_result || 'Sem análise disponível'}
                         </p>
                       </div>
                     </div>

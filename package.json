@@ -4,7 +4,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "next": "latest",
@@ -12,11 +15,17 @@
     "react-dom": "latest"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
     "@tailwindcss/postcss": "^4.1.18",
     "@types/node": "25.0.10",
     "@types/react": "19.2.10",
+    "@typescript-eslint/eslint-plugin": "^8.54.0",
+    "@typescript-eslint/parser": "^8.54.0",
     "autoprefixer": "latest",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
     "postcss": "latest",
+    "prettier": "^3.8.1",
     "tailwindcss": "latest",
     "typescript": "latest"
   }

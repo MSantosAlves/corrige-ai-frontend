@@ -10,10 +10,7 @@ const resolveAuthHeaders = (): Record<string, string> => {
   return { Authorization: `Bearer ${token}` };
 };
 
-const parseErrorMessage = async (
-  response: Response,
-  fallbackMessage: string,
-): Promise<string> => {
+const parseErrorMessage = async (response: Response, fallbackMessage: string): Promise<string> => {
   try {
     const payload = (await response.json()) as ApiErrorPayload;
     if (payload?.error) {

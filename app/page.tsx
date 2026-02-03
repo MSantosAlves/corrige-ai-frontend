@@ -74,7 +74,10 @@ export default function Home() {
     setSelectedTaskTitle(data.taskTitle ?? null);
     setIsClassTaskModalOpen(false);
     manualStartRef.current = true;
-    uploadFiles(selectedFiles);
+    uploadFiles(selectedFiles, {
+      classId: data.classId,
+      taskId: data.taskId,
+    });
   };
 
   useEffect(() => {
@@ -378,7 +381,10 @@ export default function Home() {
     // Wait for explicit user action to start processing.
   };
 
-  const uploadFiles = async (files: File[]) => {
+  const uploadFiles = async (
+    files: File[],
+    overrides?: { classId?: string | null; taskId?: string | null }
+  ) => {
     try {
       if (!manualStartRef.current) {
         return;
@@ -390,12 +396,18 @@ export default function Home() {
         return;
       }
 
-      if (!selectedClassId || !selectedTaskId) {
+      const effectiveClassId = overrides?.classId ?? selectedClassId;
+      const effectiveTaskId = overrides?.taskId ?? selectedTaskId;
+
+      if (!effectiveClassId || !effectiveTaskId) {
         setIsClassTaskModalOpen(true);
         return;
       }
 
-      await doUploadMany(files);
+      await doUploadMany(files, {
+        classId: effectiveClassId,
+        taskId: effectiveTaskId,
+      });
       return;
     } catch (uploadError) {
       const message =
@@ -408,15 +420,21 @@ export default function Home() {
     }
   };
 
-  const doUploadMany = async (files: File[]) => {
+  const doUploadMany = async (
+    files: File[],
+    context?: { classId?: string | null; taskId?: string | null }
+  ) => {
     if (files.length > 1) {
-      await doBulkUpload(files);
+      await doBulkUpload(files, context);
       return;
     }
-    await doUpload(files[0]);
+    await doUpload(files[0], context);
   };
 
-  const doBulkUpload = async (files: File[]) => {
+  const doBulkUpload = async (
+    files: File[],
+    context?: { classId?: string | null; taskId?: string | null }
+  ) => {
     try {
       setIsUploading(true);
       setError("");
@@ -432,11 +450,13 @@ export default function Home() {
       if (authUser) {
         formData.append("user_id", authUser.id);
       }
-      if (selectedClassId) {
-        formData.append("class_id", selectedClassId);
+      const classId = context?.classId ?? selectedClassId;
+      const taskId = context?.taskId ?? selectedTaskId;
+      if (classId) {
+        formData.append("class_id", classId);
       }
-      if (selectedTaskId) {
-        formData.append("task_id", selectedTaskId);
+      if (taskId) {
+        formData.append("task_id", taskId);
       }
       const token = localStorage.getItem("sessionToken");
       const response = await fetch("http://localhost:3001/extractions/bulk", {
@@ -475,7 +495,10 @@ export default function Home() {
     }
   };
 
-  const doUpload = async (file: File) => {
+  const doUpload = async (
+    file: File,
+    context?: { classId?: string | null; taskId?: string | null }
+  ) => {
     try {
       setIsUploading(true);
       setError("");
@@ -533,11 +556,13 @@ export default function Home() {
       if (authUser) {
         formData.append("user_id", authUser.id);
       }
-      if (selectedClassId) {
-        formData.append("class_id", selectedClassId);
+      const classId = context?.classId ?? selectedClassId;
+      const taskId = context?.taskId ?? selectedTaskId;
+      if (classId) {
+        formData.append("class_id", classId);
       }
-      if (selectedTaskId) {
-        formData.append("task_id", selectedTaskId);
+      if (taskId) {
+        formData.append("task_id", taskId);
       }
       const token = localStorage.getItem("sessionToken");
       const response = await fetch("http://localhost:3001/extract-text", {

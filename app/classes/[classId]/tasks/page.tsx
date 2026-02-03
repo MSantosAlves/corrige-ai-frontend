@@ -3,6 +3,12 @@
 import { useRouter, useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { listClasses } from '../../../services/classes-service';
+import { AttachCriteriaModal } from '../../../components/criteria/AttachCriteriaModal';
+import {
+  attachCriteriaToTask,
+  listCriteria,
+  type GradeCriteria,
+} from '../../../services/criteria-service';
 import { listExtractionsByTask } from '../../../services/extractions-service';
 import { createTask, listTasks } from '../../../services/tasks-service';
 
@@ -12,6 +18,8 @@ type Task = {
   title: string;
   description?: string;
   due_date?: string;
+  grade_criteria_id?: string;
+  classification?: string;
   created_at: string;
   updated_at: string;
 };
@@ -45,6 +53,14 @@ export default function TasksPage() {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDescription, setNewTaskDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCriteriaModalOpen, setIsCriteriaModalOpen] = useState(false);
+  const [criteriaOptions, setCriteriaOptions] = useState<GradeCriteria[]>([]);
+  const [criteriaMap, setCriteriaMap] = useState<Record<string, string>>({});
+  const [criteriaLoading, setCriteriaLoading] = useState(false);
+  const [criteriaError, setCriteriaError] = useState('');
+  const [criteriaSelection, setCriteriaSelection] = useState('');
+  const [criteriaTask, setCriteriaTask] = useState<Task | null>(null);
+  const [isAttachingCriteria, setIsAttachingCriteria] = useState(false);
 
   // Analysis view states
   const [selectedTaskForAnalysis, setSelectedTaskForAnalysis] = useState<Task | null>(null);
@@ -154,6 +170,72 @@ export default function TasksPage() {
     }
   };
 
+  const loadUserCriteria = async () => {
+    try {
+      setCriteriaLoading(true);
+      setCriteriaError('');
+      const userId = localStorage.getItem('sessionUserId');
+      const payload = await listCriteria({ includePublic: false });
+      const items =
+        userId && payload.items
+          ? payload.items.filter((item) => item.user_id === userId)
+          : payload.items ?? [];
+      setCriteriaOptions(items);
+      setCriteriaMap(
+        items.reduce<Record<string, string>>((acc, item) => {
+          acc[item.id] = item.name;
+          return acc;
+        }, {}),
+      );
+    } catch (loadError) {
+      const message =
+        loadError instanceof Error ? loadError.message : 'Erro ao carregar critérios.';
+      setCriteriaError(message);
+    } finally {
+      setCriteriaLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadUserCriteria();
+  }, []);
+
+  const openCriteriaModal = (task: Task) => {
+    setCriteriaTask(task);
+    setCriteriaSelection('');
+    setIsCriteriaModalOpen(true);
+    loadUserCriteria();
+  };
+
+  const handleAttachCriteria = async () => {
+    if (!criteriaTask || !criteriaSelection) {
+      return;
+    }
+    const criteria = criteriaOptions.find((item) => item.id === criteriaSelection);
+    if (!criteria) {
+      setCriteriaError('Critério selecionado inválido.');
+      return;
+    }
+    try {
+      setIsAttachingCriteria(true);
+      setCriteriaError('');
+      await attachCriteriaToTask({
+        taskId: criteriaTask.id,
+        gradeCriteriaId: criteria.id,
+        classification: criteria.classification,
+      });
+      setIsCriteriaModalOpen(false);
+    } catch (attachError) {
+      const message =
+        attachError instanceof Error
+          ? attachError.message
+          : 'Erro ao atribuir critério.';
+      setCriteriaError(message);
+    } finally {
+      setIsAttachingCriteria(false);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-white px-6 py-12">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
@@ -207,14 +289,43 @@ export default function TasksPage() {
                     onClick={() => handleTaskClick(task)}
                     className="cursor-pointer rounded-xl border border-blue-100 bg-blue-50/60 p-4 transition hover:border-blue-200 hover:bg-blue-100"
                   >
-                    <div className="flex flex-col gap-2">
-                      <h3 className="text-sm font-semibold text-gray-800">{task.title}</h3>
-                      {task.description && (
-                        <p className="text-xs text-gray-600">{task.description}</p>
-                      )}
-                      {task.due_date && (
-                        <p className="text-xs text-gray-500">Prazo: {formatDate(task.due_date)}</p>
-                      )}
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex flex-col gap-2">
+                          <h3 className="text-sm font-semibold text-gray-800">{task.title}</h3>
+                          {task.description && (
+                            <p className="text-xs text-gray-600">{task.description}</p>
+                          )}
+                          {task.due_date && (
+                            <p className="text-xs text-gray-500">
+                              Prazo: {formatDate(task.due_date)}
+                            </p>
+                          )}
+                        </div>
+                        {task.grade_criteria_id ? (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              openCriteriaModal(task);
+                            }}
+                            className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-200"
+                          >
+                            {criteriaMap[task.grade_criteria_id] || 'Critério anexado'}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              openCriteriaModal(task);
+                            }}
+                            className="rounded-full border border-blue-200 px-3 py-1 text-xs font-semibold text-blue-700 hover:border-blue-300"
+                          >
+                            Atribuir critério
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </li>
                 ))}
@@ -340,6 +451,18 @@ export default function TasksPage() {
           </div>
         </div>
       )}
+
+      <AttachCriteriaModal
+        isOpen={isCriteriaModalOpen}
+        onClose={() => setIsCriteriaModalOpen(false)}
+        criteriaOptions={criteriaOptions}
+        selectedCriteriaId={criteriaSelection}
+        onSelectCriteria={setCriteriaSelection}
+        onAttach={handleAttachCriteria}
+        isLoading={criteriaLoading}
+        isSubmitting={isAttachingCriteria}
+        error={criteriaError}
+      />
     </main>
   );
 }

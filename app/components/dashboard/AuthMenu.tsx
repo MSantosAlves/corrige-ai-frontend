@@ -21,6 +21,7 @@ type AuthMenuProps = {
   onSubmitAuth: (mode: 'sign-in' | 'sign-up') => void;
   onSignOut: () => void;
   onNavigateClasses: () => void;
+  onNavigateCriteria: () => void;
   loginMenuRef: React.RefObject<HTMLDivElement | null>;
   userMenuRef: React.RefObject<HTMLDivElement | null>;
 };
@@ -44,6 +45,7 @@ export const AuthMenu = ({
   onSubmitAuth,
   onSignOut,
   onNavigateClasses,
+  onNavigateCriteria,
   loginMenuRef,
   userMenuRef,
 }: AuthMenuProps) => (
@@ -67,7 +69,7 @@ export const AuthMenu = ({
         </button>
         {isUserMenuOpen && (
           <div className="absolute right-0 mt-3 w-48 rounded-xl border border-blue-100 bg-white p-2 shadow-lg">
-            {['Perfil', 'Minhas turmas', 'Sair'].map((label) => (
+            {['Perfil', 'Minhas turmas', 'Critérios de avaliação', 'Sair'].map((label) => (
               <button
                 key={label}
                 type="button"
@@ -77,6 +79,9 @@ export const AuthMenu = ({
                   }
                   if (label === 'Minhas turmas') {
                     onNavigateClasses();
+                  }
+                  if (label === 'Critérios de avaliação') {
+                    onNavigateCriteria();
                   }
                   setIsUserMenuOpen(false);
                 }}

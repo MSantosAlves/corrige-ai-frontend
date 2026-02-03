@@ -199,6 +199,9 @@ export default function Home() {
         onNavigateClasses={() => {
           window.location.href = '/classes';
         }}
+        onNavigateCriteria={() => {
+          window.location.href = '/grade-criteria';
+        }}
         loginMenuRef={loginMenuRef}
         userMenuRef={userMenuRef}
       />

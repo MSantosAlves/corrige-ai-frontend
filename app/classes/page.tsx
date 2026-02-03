@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-import { listClasses } from '../services/classes-service';
+import { createClass, listClasses } from '../services/classes-service';
 
 type ClassItem = {
   id: string;
@@ -16,6 +16,33 @@ export default function ClassesPage() {
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [newClassName, setNewClassName] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+
+  const handleCreateClass = async () => {
+    const userId = localStorage.getItem('sessionUserId');
+    if (!userId || !newClassName.trim()) {
+      return;
+    }
+    try {
+      setIsCreating(true);
+      setError('');
+      const created = (await createClass({
+        name: newClassName.trim(),
+        userId,
+      })) as ClassItem;
+      setClasses((prev) => [created, ...prev]);
+      setNewClassName('');
+      setIsCreateModalOpen(false);
+    } catch (createError) {
+      const message =
+        createError instanceof Error ? createError.message : 'Erro inesperado ao criar turma.';
+      setError(message);
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
   useEffect(() => {
     const userId = localStorage.getItem('sessionUserId');
@@ -60,6 +87,15 @@ export default function ClassesPage() {
         </header>
 
         <section className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-center justify-end">
+            <button
+              type="button"
+              onClick={() => setIsCreateModalOpen(true)}
+              className="rounded-full bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700"
+            >
+              Criar turma
+            </button>
+          </div>
           {isLoading ? (
             <p className="text-sm text-gray-500">Carregando turmas...</p>
           ) : classes.length === 0 ? (
@@ -87,6 +123,43 @@ export default function ClassesPage() {
           {error && <p className="mt-4 text-sm text-red-500">{error}</p>}
         </section>
       </div>
+
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h2 className="text-lg font-semibold text-gray-900">Criar nova turma</h2>
+            <p className="mt-1 text-sm text-gray-600">
+              Informe o nome da turma para continuar.
+            </p>
+            <div className="mt-4 flex flex-col gap-3">
+              <input
+                type="text"
+                value={newClassName}
+                onChange={(event) => setNewClassName(event.target.value)}
+                placeholder="Nome da turma"
+                className="w-full rounded-xl border border-blue-200 px-4 py-2.5 text-sm text-gray-700 outline-none transition focus:border-blue-400"
+              />
+            </div>
+            <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setIsCreateModalOpen(false)}
+                className="rounded-full border border-blue-100 px-4 py-2 text-sm font-semibold text-gray-600"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isCreating || !newClassName.trim()}
+                onClick={handleCreateClass}
+                className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+              >
+                {isCreating ? 'Criando...' : 'Criar turma'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

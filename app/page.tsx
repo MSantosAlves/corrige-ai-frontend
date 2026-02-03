@@ -13,7 +13,7 @@ const documentTypeMap = {
 type DocumentTypeKey = keyof typeof documentTypeMap;
 
 export default function Home() {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [resultText, setResultText] = useState("");
   const [analysisText, setAnalysisText] = useState("");
@@ -30,7 +30,7 @@ export default function Home() {
   const [authUser, setAuthUser] = useState<{ id: string; name: string } | null>(
     null
   );
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [analysisCacheKey, setAnalysisCacheKey] = useState<string | null>(null);
   const [cachedFileName, setCachedFileName] = useState<string | null>(null);
@@ -43,6 +43,8 @@ export default function Home() {
   const typeMenuRef = useRef<HTMLDivElement | null>(null);
   const loginMenuRef = useRef<HTMLDivElement | null>(null);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
+  const bulkStreamRef = useRef<EventSource | null>(null);
+  const manualStartRef = useRef(false);
   const documentTypes = useMemo(
     () => Object.entries(documentTypeMap) as [DocumentTypeKey, string][],
     []
@@ -53,36 +55,42 @@ export default function Home() {
   const [isClassTaskModalOpen, setIsClassTaskModalOpen] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [pendingFileForAnalysis, setPendingFileForAnalysis] = useState<File | null>(null);
+  const [selectedClassName, setSelectedClassName] = useState<string | null>(null);
+  const [selectedTaskTitle, setSelectedTaskTitle] = useState<string | null>(null);
+  const [bulkTotal, setBulkTotal] = useState(0);
+  const [bulkCompleted, setBulkCompleted] = useState(0);
 
-  const handleClassTaskModalConfirm = (classId: string, taskId: string) => {
-    setSelectedClassId(classId);
-    setSelectedTaskId(taskId);
+  const isBulkInProgress = bulkTotal > 0 && bulkCompleted < bulkTotal;
+
+  const handleClassTaskModalConfirm = (data: {
+    classId: string;
+    taskId: string;
+    className?: string;
+    taskTitle?: string;
+  }) => {
+    setSelectedClassId(data.classId);
+    setSelectedTaskId(data.taskId);
+    setSelectedClassName(data.className ?? null);
+    setSelectedTaskTitle(data.taskTitle ?? null);
     setIsClassTaskModalOpen(false);
-    // Upload will be triggered by useEffect when pendingFileForAnalysis and selectedClassId/selectedTaskId are set
+    manualStartRef.current = true;
+    uploadFiles(selectedFiles);
   };
 
-  // Upload pending file after class and task are selected
   useEffect(() => {
-    if (pendingFileForAnalysis && selectedClassId && selectedTaskId && !isClassTaskModalOpen) {
-      doUpload(pendingFileForAnalysis);
-      setPendingFileForAnalysis(null);
-    }
-  }, [pendingFileForAnalysis, selectedClassId, selectedTaskId, isClassTaskModalOpen]);
-
-  useEffect(() => {
-    if (!selectedFile) {
+    const activeFile = selectedFiles[0];
+    if (!activeFile) {
       setPreviewUrl(null);
       return;
     }
 
-    const url = URL.createObjectURL(selectedFile);
+    const url = URL.createObjectURL(activeFile);
     setPreviewUrl(url);
 
     return () => {
       URL.revokeObjectURL(url);
     };
-  }, [selectedFile]);
+  }, [selectedFiles]);
 
   useEffect(() => {
     if (!isTypeMenuOpen) {
@@ -184,13 +192,7 @@ export default function Home() {
     };
   }, [isUserMenuOpen]);
 
-  useEffect(() => {
-    if (authUser && pendingFile) {
-      const fileToUpload = pendingFile;
-      setPendingFile(null);
-      uploadFile(fileToUpload);
-    }
-  }, [authUser, pendingFile]);
+  // Wait for explicit user action to start processing after login.
 
   const handleAuth = async (mode: "sign-in" | "sign-up") => {
     try {
@@ -236,47 +238,237 @@ export default function Home() {
   };
 
   const fileLabel = useMemo(() => {
-    if (!selectedFile && !cachedFileName) {
+    if (selectedFiles.length === 0 && !cachedFileName) {
       return "Arraste os arquivos aqui";
     }
 
-    const label = selectedFile?.name ?? cachedFileName ?? "";
-    return `Arquivo selecionado: ${label}`;
-  }, [selectedFile, cachedFileName]);
+    if (selectedFiles.length === 1) {
+      return `Arquivo selecionado: ${selectedFiles[0].name}`;
+    }
+
+    if (selectedFiles.length > 1) {
+      return `Arquivos selecionados: ${selectedFiles.length}`;
+    }
+
+    return `Arquivo selecionado: ${cachedFileName ?? ""}`;
+  }, [selectedFiles, cachedFileName]);
+
+  const bulkProgressPercent = useMemo(() => {
+    if (bulkTotal <= 0) {
+      return 0;
+    }
+    return Math.min(100, Math.round((bulkCompleted / bulkTotal) * 100));
+  }, [bulkCompleted, bulkTotal]);
+
+  const closeBulkStream = () => {
+    if (bulkStreamRef.current) {
+      bulkStreamRef.current.close();
+      bulkStreamRef.current = null;
+    }
+  };
+
+  const startBulkStream = (batchId: string) => {
+    closeBulkStream();
+    const token = localStorage.getItem("sessionToken");
+    const streamUrl = new URL(
+      `http://localhost:3001/extractions/bulk/${batchId}/events`
+    );
+    if (token) {
+      streamUrl.searchParams.set("token", token);
+    }
+
+    const eventSource = new EventSource(streamUrl.toString());
+    bulkStreamRef.current = eventSource;
+
+    const updateProgressFromPayload = (payload: {
+      progress?: { completed?: number; total?: number };
+    }) => {
+      const total = payload.progress?.total ?? 0;
+      const completed = payload.progress?.completed ?? 0;
+      if (!total) {
+        return;
+      }
+      setBulkTotal((current) => Math.max(current, total));
+      setBulkCompleted((current) => Math.max(current, completed));
+    };
+
+    eventSource.addEventListener("status", (event) => {
+      try {
+        const payload = JSON.parse((event as MessageEvent).data) as {
+          progress?: { completed?: number; total?: number };
+        };
+        updateProgressFromPayload(payload);
+      } catch (streamError) {
+        console.error("Failed to parse SSE payload", streamError);
+      }
+    });
+
+    eventSource.addEventListener("done", (event) => {
+      try {
+        const payload = JSON.parse((event as MessageEvent).data) as {
+          progress?: { completed?: number; total?: number };
+        };
+        updateProgressFromPayload(payload);
+      } catch (streamError) {
+        console.error("Failed to parse SSE done payload", streamError);
+      } finally {
+        closeBulkStream();
+      }
+    });
+
+    eventSource.addEventListener("error", () => {
+      closeBulkStream();
+    });
+  };
+
+  const validExtensions = [".pdf", ".png", ".jpeg", ".jpg", ".jpepg"];
+
+  const getFileKey = (file: File) =>
+    `${file.name}-${file.size}-${file.lastModified}`;
+
+  const mergeFiles = (current: File[], incoming: File[]) => {
+    const map = new Map<string, File>();
+    current.forEach((file) => map.set(getFileKey(file), file));
+    incoming.forEach((file) => map.set(getFileKey(file), file));
+    return Array.from(map.values());
+  };
+
+  const addFiles = (incoming: File[]) => {
+    const validFiles = incoming.filter((file) => {
+      const fileName = file.name.toLowerCase();
+      return validExtensions.some((ext) => fileName.endsWith(ext));
+    });
+
+    if (validFiles.length === 0) {
+      setError("Tipo de arquivo não suportado. Use PDF, PNG, JPG ou JPEG.");
+      return selectedFiles;
+    }
+
+    if (validFiles.length !== incoming.length) {
+      setError("Alguns arquivos foram ignorados por formato inválido.");
+    }
+
+    return mergeFiles(selectedFiles, validFiles);
+  };
+
+  const removeSelectedFile = (fileKey: string) => {
+    const nextFiles = selectedFiles.filter((file) => getFileKey(file) !== fileKey);
+    setSelectedFiles(nextFiles);
+    setPendingFiles((current) => current.filter((file) => getFileKey(file) !== fileKey));
+    if (nextFiles.length === 0) {
+      setResultText("");
+      setAnalysisText("");
+      setDebugPayload(null);
+      setCachedFileName(null);
+      setBulkTotal(0);
+      setBulkCompleted(0);
+      closeBulkStream();
+    }
+  };
 
   const handleFileChange = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const file = event.target.files?.[0] ?? null;
-    setSelectedFile(file);
+    const files = Array.from(event.target.files ?? []);
+    const nextFiles = addFiles(files);
+    setSelectedFiles(nextFiles);
     setResultText("");
     setAnalysisText("");
-    setError("");
     setDebugPayload(null);
-
-    if (file && documentType) {
-      await uploadFile(file);
-    }
+    // Wait for explicit user action to start processing.
   };
 
-  const uploadFile = async (file: File) => {
+  const uploadFiles = async (files: File[]) => {
     try {
+      if (!manualStartRef.current) {
+        return;
+      }
+      manualStartRef.current = false;
       if (!authUser) {
         setIsLoginMenuOpen(true);
-        setPendingFile(file);
+        setPendingFiles(files);
         return;
       }
 
+      if (!selectedClassId || !selectedTaskId) {
+        setIsClassTaskModalOpen(true);
+        return;
+      }
 
-      // Always show modal to confirm class and task selection
-      setIsClassTaskModalOpen(true);
-      setPendingFileForAnalysis(file);
+      await doUploadMany(files);
       return;
     } catch (uploadError) {
       const message =
         uploadError instanceof Error
           ? uploadError.message
           : "Erro inesperado ao enviar o arquivo.";
+      setError(message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const doUploadMany = async (files: File[]) => {
+    if (files.length > 1) {
+      await doBulkUpload(files);
+      return;
+    }
+    await doUpload(files[0]);
+  };
+
+  const doBulkUpload = async (files: File[]) => {
+    try {
+      setIsUploading(true);
+      setError("");
+      setResultText("");
+      setAnalysisText("");
+      setDebugPayload(null);
+
+      const formData = new FormData();
+      files.forEach((file) => {
+        formData.append("files", file);
+      });
+      formData.append("document_type", documentType);
+      if (authUser) {
+        formData.append("user_id", authUser.id);
+      }
+      if (selectedClassId) {
+        formData.append("class_id", selectedClassId);
+      }
+      if (selectedTaskId) {
+        formData.append("task_id", selectedTaskId);
+      }
+      const token = localStorage.getItem("sessionToken");
+      const response = await fetch("http://localhost:3001/extractions/bulk", {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        body: formData
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json()) as { error?: string };
+        throw new Error(payload.error || "Falha ao enviar os arquivos.");
+      }
+
+      const payload = (await response.json()) as {
+        batch_id?: string;
+        progress?: { completed?: number; total?: number };
+      };
+      const total = payload.progress?.total ?? 0;
+      const completed = payload.progress?.completed ?? 0;
+      if (total > 0) {
+        setBulkTotal(total);
+        setBulkCompleted(completed);
+      }
+
+      if (payload.batch_id) {
+        startBulkStream(payload.batch_id);
+      }
+    } catch (uploadError) {
+      const message =
+        uploadError instanceof Error
+          ? uploadError.message
+          : "Erro inesperado ao enviar os arquivos.";
       setError(message);
     } finally {
       setIsUploading(false);
@@ -347,7 +539,6 @@ export default function Home() {
       if (selectedTaskId) {
         formData.append("task_id", selectedTaskId);
       }
-
       const token = localStorage.getItem("sessionToken");
       const response = await fetch("http://localhost:3001/extract-text", {
         method: "POST",
@@ -425,27 +616,12 @@ export default function Home() {
 
     const files = event.dataTransfer.files;
     if (files && files.length > 0) {
-      const file = files[0];
-      
-      // Validate file type
-      const validExtensions = [".pdf", ".png", ".jpeg", ".jpg", ".jpepg"];
-      const fileName = file.name.toLowerCase();
-      const isValid = validExtensions.some(ext => fileName.endsWith(ext));
-      
-      if (!isValid) {
-        setError("Tipo de arquivo não suportado. Use PDF, PNG, JPG ou JPEG.");
-        return;
-      }
-
-      setSelectedFile(file);
+      const nextFiles = addFiles(Array.from(files));
+      setSelectedFiles(nextFiles);
       setResultText("");
       setAnalysisText("");
-      setError("");
       setDebugPayload(null);
-
-      if (file && documentType) {
-        await uploadFile(file);
-      }
+      // Wait for explicit user action to start processing.
     }
   };
 
@@ -728,15 +904,56 @@ export default function Home() {
               <span className="mt-1 text-xs text-blue-600">
                 ou clique para selecionar do seu computador
               </span>
-              <input
-                id="file-upload"
-                name="file-upload"
-                type="file"
-                accept=".pdf,.png,.jpeg,.jpg,.jpepg"
-                className="sr-only"
-                onChange={handleFileChange}
-              />
+                <input
+                  id="file-upload"
+                  name="file-upload"
+                  type="file"
+                  accept=".pdf,.png,.jpeg,.jpg,.jpepg"
+                  multiple
+                  className="sr-only"
+                  onChange={handleFileChange}
+                />
             </label>
+
+            {selectedFiles.length > 0 && (
+              <div className="mt-4 w-full">
+                <div className="flex flex-wrap gap-2">
+                  {selectedFiles.map((file) => {
+                    const fileKey = getFileKey(file);
+                    return (
+                      <span
+                        key={fileKey}
+                        className="inline-flex max-w-full items-center gap-2 rounded-full border border-blue-100 bg-white px-3 py-1 text-xs text-gray-700"
+                      >
+                        <span className="max-w-[220px] truncate">{file.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeSelectedFile(fileKey)}
+                          className="text-gray-400 transition hover:text-red-500"
+                          aria-label={`Remover ${file.name}`}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+                {bulkTotal > 0 && (
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span>Progresso da extração</span>
+                      <span>{bulkProgressPercent}%</span>
+                    </div>
+                    <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-blue-100">
+                      <div
+                        className="h-full rounded-full bg-blue-500 transition-all"
+                        style={{ width: `${bulkProgressPercent}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
               <p className="text-xs text-gray-500">
@@ -783,16 +1000,38 @@ export default function Home() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => selectedFile && uploadFile(selectedFile)}
-                  disabled={!selectedFile || !documentType || isUploading}
+                  onClick={() => {
+                    if (selectedFiles.length === 0) {
+                      return;
+                    }
+                    if (!selectedClassId || !selectedTaskId) {
+                      setIsClassTaskModalOpen(true);
+                      return;
+                    }
+                    manualStartRef.current = true;
+                    uploadFiles(selectedFiles);
+                  }}
+                  disabled={
+                    selectedFiles.length === 0 ||
+                    !documentType ||
+                    isUploading ||
+                    isBulkInProgress
+                  }
                   className="inline-flex items-center justify-center rounded-full bg-blue-600 px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
                 >
-                  {isUploading ? "Enviando..." : "Iniciar revisao"}
+                  {isUploading || isBulkInProgress ? (
+                    <span className="flex items-center gap-2">
+                      <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/70 border-t-white" />
+                      Processando...
+                    </span>
+                  ) : (
+                    "Iniciar revisao"
+                  )}
                 </button>
               </div>
             </div>
 
-              {authUser && selectedFile && (resultText || analysisText || error) && (
+              {authUser && selectedFiles.length > 0 && (resultText || analysisText || error) && (
                 <div className="mt-6 rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-gray-700">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <h3 className="text-xs font-semibold uppercase tracking-wide text-blue-700">
@@ -805,7 +1044,9 @@ export default function Home() {
                         <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                           Original
                         </p>
-                        {previewUrl && selectedFile?.type !== "application/pdf" && (
+                        {selectedFiles.length === 1 &&
+                          previewUrl &&
+                          selectedFiles[0]?.type !== "application/pdf" && (
                           <button
                             type="button"
                             onClick={() => setIsZoomed(true)}
@@ -817,7 +1058,8 @@ export default function Home() {
                       </div>
                       <div className="mt-3 flex min-h-[400px] items-center justify-center rounded-md bg-gray-50 p-3">
                         {previewUrl ? (
-                          selectedFile?.type === "application/pdf" ? (
+                          selectedFiles.length === 1 &&
+                          selectedFiles[0]?.type === "application/pdf" ? (
                             <iframe
                               title="preview"
                               src={previewUrl}
@@ -826,7 +1068,7 @@ export default function Home() {
                           ) : (
                             <img
                               src={previewUrl}
-                              alt={selectedFile?.name || "Arquivo enviado"}
+                              alt={selectedFiles[0]?.name || "Arquivo enviado"}
                               className="max-h-96 w-auto rounded-md object-contain"
                             />
                           )
@@ -869,7 +1111,10 @@ export default function Home() {
         </section>
       </div>
 
-      {isZoomed && previewUrl && selectedFile?.type !== "application/pdf" && (
+      {isZoomed &&
+        selectedFiles.length === 1 &&
+        previewUrl &&
+        selectedFiles[0]?.type !== "application/pdf" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6">
           <div className="relative max-h-[90vh] w-full max-w-4xl overflow-auto rounded-2xl bg-white p-4 shadow-xl">
             <button
@@ -881,7 +1126,7 @@ export default function Home() {
             </button>
             <img
               src={previewUrl}
-              alt={selectedFile?.name || "Arquivo enviado"}
+              alt={selectedFiles[0]?.name || "Arquivo enviado"}
               className="mx-auto max-h-[75vh] w-auto rounded-md object-contain"
             />
           </div>
@@ -892,13 +1137,13 @@ export default function Home() {
         isOpen={isClassTaskModalOpen}
         onClose={() => {
           setIsClassTaskModalOpen(false);
-          setPendingFileForAnalysis(null);
         }}
         onConfirm={handleClassTaskModalConfirm}
         userId={authUser?.id}
         preSelectedClassId={selectedClassId ?? undefined}
         preSelectedTaskId={selectedTaskId ?? undefined}
       />
+
     </main>
   );
 }

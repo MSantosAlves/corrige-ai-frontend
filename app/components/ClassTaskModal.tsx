@@ -5,7 +5,12 @@ import { useEffect, useState } from "react";
 type ClassTaskModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (classId: string, taskId: string) => void;
+  onConfirm: (data: {
+    classId: string;
+    taskId: string;
+    className?: string;
+    taskTitle?: string;
+  }) => void;
   userId?: string;
   preSelectedClassId?: string;
   preSelectedTaskId?: string;
@@ -186,7 +191,13 @@ export default function ClassTaskModal({
       const createdTask = (await taskResponse.json()) as Task;
 
       // Confirm with the new IDs
-      onConfirm(createdClass.id, createdTask.id);
+      onConfirm({
+        classId: createdClass.id,
+        taskId: createdTask.id,
+        className: createdClass.name,
+        taskTitle: createdTask.title
+      });
+      onClose();
 
       // Reset form
       setNewClassName("");
@@ -368,7 +379,15 @@ export default function ClassTaskModal({
             }
             onClick={() => {
               if (activeTab === "select") {
-                onConfirm(selectedClassId, selectedTaskId);
+                const selectedClass = classes.find((item) => item.id === selectedClassId);
+                const selectedTask = tasks.find((item) => item.id === selectedTaskId);
+                onConfirm({
+                  classId: selectedClassId,
+                  taskId: selectedTaskId,
+                  className: selectedClass?.name,
+                  taskTitle: selectedTask?.title
+                });
+                onClose();
               } else {
                 handleCreateClassAndTask();
               }

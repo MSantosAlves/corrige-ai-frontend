@@ -2,6 +2,9 @@
 
 import { useRouter, useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { listClasses } from '../../../services/classes-service';
+import { listExtractionsByTask } from '../../../services/extractions-service';
+import { createTask, listTasks } from '../../../services/tasks-service';
 
 type Task = {
   id: string;
@@ -60,17 +63,7 @@ export default function TasksPage() {
         if (!userId) {
           return;
         }
-        const token = localStorage.getItem('sessionToken');
-        const response = await fetch(
-          `http://localhost:3001/classes?user_id=${encodeURIComponent(userId)}`,
-          {
-            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-          },
-        );
-        if (!response.ok) {
-          return;
-        }
-        const payload = (await response.json()) as { items?: ClassItem[] };
+        const payload = (await listClasses(userId)) as { items?: ClassItem[] };
         const found = payload.items?.find((c) => c.id === classId);
         if (found) {
           setClassInfo(found);
@@ -94,18 +87,7 @@ export default function TasksPage() {
         setError('');
 
         // Fetch tasks for this class
-        const token = localStorage.getItem('sessionToken');
-        const tasksResponse = await fetch(
-          `http://localhost:3001/tasks?class_id=${encodeURIComponent(classId)}`,
-          {
-            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-          },
-        );
-        if (!tasksResponse.ok) {
-          const payload = (await tasksResponse.json()) as { error?: string };
-          throw new Error(payload.error || 'Falha ao carregar tarefas.');
-        }
-        const tasksPayload = (await tasksResponse.json()) as { items?: Task[] };
+        const tasksPayload = (await listTasks(classId)) as { items?: Task[] };
         setTasks(tasksPayload.items ?? []);
       } catch (fetchError) {
         const message =
@@ -126,24 +108,11 @@ export default function TasksPage() {
     try {
       setIsSubmitting(true);
       setError('');
-      const token = localStorage.getItem('sessionToken');
-      const response = await fetch('http://localhost:3001/tasks', {
-        method: 'POST',
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          class_id: classId,
-          title: newTaskTitle.trim(),
-          description: newTaskDescription.trim() || undefined,
-        }),
-      });
-      if (!response.ok) {
-        const payload = (await response.json()) as { error?: string };
-        throw new Error(payload.error || 'Falha ao criar tarefa.');
-      }
-      const created = (await response.json()) as Task;
+      const created = (await createTask({
+        classId,
+        title: newTaskTitle.trim(),
+        description: newTaskDescription.trim() || undefined,
+      })) as Task;
       setTasks((prev) => [created, ...prev]);
       setNewTaskTitle('');
       setNewTaskDescription('');
@@ -174,18 +143,7 @@ export default function TasksPage() {
     setExtractions([]);
 
     try {
-      const token = localStorage.getItem('sessionToken');
-      const response = await fetch(
-        `http://localhost:3001/extractions?task_id=${encodeURIComponent(task.id)}`,
-        {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        },
-      );
-      if (!response.ok) {
-        const payload = (await response.json()) as { error?: string };
-        throw new Error(payload.error || 'Falha ao carregar análises.');
-      }
-      const payload = (await response.json()) as { items?: TaskExtraction[] };
+      const payload = (await listExtractionsByTask(task.id)) as { items?: TaskExtraction[] };
       setExtractions(payload.items ?? []);
     } catch (fetchError) {
       const message =

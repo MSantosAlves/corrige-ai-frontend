@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { createClass, listClasses } from '../services/classes-service';
+import { createTask, listTasks } from '../services/tasks-service';
 
 type ClassTaskModalProps = {
   isOpen: boolean;
@@ -69,17 +71,7 @@ export default function ClassTaskModal({
       try {
         setIsLoadingClasses(true);
         setClassesError('');
-        const token = localStorage.getItem('sessionToken');
-        const response = await fetch(
-          `http://localhost:3001/classes?user_id=${encodeURIComponent(userId)}`,
-          {
-            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-          },
-        );
-        if (!response.ok) {
-          throw new Error('Falha ao carregar turmas');
-        }
-        const data = (await response.json()) as { items?: Class[] };
+        const data = (await listClasses(userId)) as { items?: Class[] };
         setClasses(data.items ?? []);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Erro ao carregar turmas';
@@ -114,17 +106,7 @@ export default function ClassTaskModal({
       try {
         setIsLoadingTasks(true);
         setTasksError('');
-        const token = localStorage.getItem('sessionToken');
-        const response = await fetch(
-          `http://localhost:3001/tasks?class_id=${encodeURIComponent(selectedClassId)}`,
-          {
-            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-          },
-        );
-        if (!response.ok) {
-          throw new Error('Falha ao carregar tarefas');
-        }
-        const data = (await response.json()) as { items?: Task[] };
+        const data = (await listTasks(selectedClassId)) as { items?: Task[] };
         setTasks(data.items ?? []);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Erro ao carregar tarefas';
@@ -147,46 +129,17 @@ export default function ClassTaskModal({
       setCreateError('');
 
       // Create class
-      const token = localStorage.getItem('sessionToken');
-      const classResponse = await fetch('http://localhost:3001/classes', {
-        method: 'POST',
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: newClassName.trim(),
-          user_id: userId,
-        }),
-      });
-
-      if (!classResponse.ok) {
-        const payload = (await classResponse.json()) as { error?: string };
-        throw new Error(payload.error || 'Falha ao criar turma');
-      }
-
-      const createdClass = (await classResponse.json()) as Class;
+      const createdClass = (await createClass({
+        name: newClassName.trim(),
+        userId,
+      })) as Class;
 
       // Create task
-      const taskResponse = await fetch('http://localhost:3001/tasks', {
-        method: 'POST',
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          class_id: createdClass.id,
-          title: newTaskTitle.trim(),
-          description: newTaskDescription.trim() || undefined,
-        }),
-      });
-
-      if (!taskResponse.ok) {
-        const payload = (await taskResponse.json()) as { error?: string };
-        throw new Error(payload.error || 'Falha ao criar tarefa');
-      }
-
-      const createdTask = (await taskResponse.json()) as Task;
+      const createdTask = (await createTask({
+        classId: createdClass.id,
+        title: newTaskTitle.trim(),
+        description: newTaskDescription.trim() || undefined,
+      })) as Task;
 
       // Confirm with the new IDs
       onConfirm({

@@ -2,6 +2,7 @@
 
 import { useRouter, useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { getExtraction } from '../../../../../../services/extractions-service';
 
 type TaskExtraction = {
   id: string;
@@ -31,18 +32,7 @@ export default function ExtractionDetailPage() {
       try {
         setIsLoading(true);
         setError('');
-        const token = localStorage.getItem('sessionToken');
-        const response = await fetch(
-          `http://localhost:3001/extractions/${encodeURIComponent(extractionId)}`,
-          {
-            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-          },
-        );
-        if (!response.ok) {
-          const payload = (await response.json()) as { error?: string };
-          throw new Error(payload.error || 'Falha ao carregar análise.');
-        }
-        const data = (await response.json()) as TaskExtraction;
+        const data = (await getExtraction(extractionId)) as TaskExtraction;
         setExtraction(data);
       } catch (fetchError) {
         const message =

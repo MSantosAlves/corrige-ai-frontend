@@ -16,6 +16,7 @@ type ClassTaskModalProps = {
   userId?: string;
   preSelectedClassId?: string;
   preSelectedTaskId?: string;
+  initialTab?: TabType;
 };
 
 type TabType = 'select' | 'create';
@@ -41,8 +42,11 @@ export default function ClassTaskModal({
   userId,
   preSelectedClassId,
   preSelectedTaskId,
+  initialTab,
 }: ClassTaskModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>('select');
+  const effectiveUserId =
+    userId ?? (typeof window !== 'undefined' ? localStorage.getItem('sessionUserId') : null);
 
   // Select tab states
   const [classes, setClasses] = useState<Class[]>([]);
@@ -94,6 +98,13 @@ export default function ClassTaskModal({
     }
   }, [isOpen, preSelectedClassId, preSelectedTaskId]);
 
+  useEffect(() => {
+    if (!isOpen || !initialTab) {
+      return;
+    }
+    setActiveTab(initialTab);
+  }, [initialTab, isOpen]);
+
   // Load tasks when class is selected
   useEffect(() => {
     if (!selectedClassId) {
@@ -120,7 +131,7 @@ export default function ClassTaskModal({
   }, [selectedClassId]);
 
   const handleCreateClassAndTask = async () => {
-    if (!newClassName.trim() || !newTaskTitle.trim() || !userId) {
+    if (!newClassName.trim() || !newTaskTitle.trim() || !effectiveUserId) {
       return;
     }
 
@@ -131,7 +142,7 @@ export default function ClassTaskModal({
       // Create class
       const createdClass = (await createClass({
         name: newClassName.trim(),
-        userId,
+        userId: effectiveUserId,
       })) as Class;
 
       // Create task
@@ -169,20 +180,22 @@ export default function ClassTaskModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6">
       <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-        <h2 className="text-lg font-semibold text-gray-900">Selecione uma Turma e Tarefa</h2>
-        <p className="mt-1 text-sm text-gray-600">
+        <h2 className="text-lg font-semibold text-[var(--ink)]">
+          Selecione uma Turma e Tarefa
+        </h2>
+        <p className="mt-1 text-sm text-[var(--graphite)]">
           Para começar a análise, escolha uma turma e uma tarefa existentes ou crie novas.
         </p>
 
         {/* Tabs */}
-        <div className="mt-6 flex border-b border-blue-100">
+        <div className="mt-6 flex border-b border-[var(--fog)]">
           <button
             type="button"
             onClick={() => setActiveTab('select')}
             className={`flex-1 pb-3 text-center text-sm font-semibold transition ${
               activeTab === 'select'
-                ? 'border-b-2 border-blue-600 text-blue-700'
-                : 'text-gray-400 hover:text-gray-600'
+                ? 'border-b-2 border-[var(--chalk)] text-[var(--chalk)]'
+                : 'text-[var(--graphite)] hover:text-[var(--ink)]'
             }`}
           >
             Selecionar
@@ -192,8 +205,8 @@ export default function ClassTaskModal({
             onClick={() => setActiveTab('create')}
             className={`flex-1 pb-3 text-center text-sm font-semibold transition ${
               activeTab === 'create'
-                ? 'border-b-2 border-blue-600 text-blue-700'
-                : 'text-gray-400 hover:text-gray-600'
+                ? 'border-b-2 border-[var(--chalk)] text-[var(--chalk)]'
+                : 'text-[var(--graphite)] hover:text-[var(--ink)]'
             }`}
           >
             Criar
@@ -205,12 +218,12 @@ export default function ClassTaskModal({
           {activeTab === 'select' && (
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-gray-600">Turma</label>
+                <label className="text-xs font-semibold text-[var(--graphite)]">Turma</label>
                 <select
                   value={selectedClassId}
                   onChange={(e) => setSelectedClassId(e.target.value)}
                   disabled={isLoadingClasses}
-                  className="mt-2 w-full rounded-xl border border-blue-200 px-4 py-2.5 text-sm text-gray-700 outline-none transition focus:border-blue-400 disabled:bg-gray-100"
+                  className="mt-2 w-full rounded-xl border border-[var(--fog)] px-4 py-2.5 text-sm text-[var(--ink)] outline-none transition focus:border-[var(--chalk)] disabled:bg-[var(--wash)]"
                 >
                   <option value="">
                     {isLoadingClasses
@@ -225,17 +238,19 @@ export default function ClassTaskModal({
                     </option>
                   ))}
                 </select>
-                {classesError && <p className="mt-2 text-xs text-red-500">{classesError}</p>}
+                {classesError && (
+                  <p className="mt-2 text-xs text-[var(--rubric)]">{classesError}</p>
+                )}
               </div>
 
               {selectedClassId && (
                 <div>
-                  <label className="text-xs font-semibold text-gray-600">Tarefa</label>
+                  <label className="text-xs font-semibold text-[var(--graphite)]">Tarefa</label>
                   <select
                     value={selectedTaskId}
                     onChange={(e) => setSelectedTaskId(e.target.value)}
                     disabled={isLoadingTasks}
-                    className="mt-2 w-full rounded-xl border border-blue-200 px-4 py-2.5 text-sm text-gray-700 outline-none transition focus:border-blue-400 disabled:bg-gray-100"
+                    className="mt-2 w-full rounded-xl border border-[var(--fog)] px-4 py-2.5 text-sm text-[var(--ink)] outline-none transition focus:border-[var(--chalk)] disabled:bg-[var(--wash)]"
                   >
                     <option value="">
                       {isLoadingTasks
@@ -250,7 +265,9 @@ export default function ClassTaskModal({
                       </option>
                     ))}
                   </select>
-                  {tasksError && <p className="mt-2 text-xs text-red-500">{tasksError}</p>}
+                  {tasksError && (
+                    <p className="mt-2 text-xs text-[var(--rubric)]">{tasksError}</p>
+                  )}
                 </div>
               )}
             </div>
@@ -258,39 +275,48 @@ export default function ClassTaskModal({
 
           {activeTab === 'create' && (
             <div className="space-y-4">
+            {!effectiveUserId && (
+              <div className="rounded-xl border border-[var(--fog)] bg-[var(--paper)] p-3 text-xs text-[var(--rubric)]">
+                Faça login para criar novas turmas e tarefas.
+              </div>
+            )}
               <div>
-                <label className="text-xs font-semibold text-gray-600">Nome da Turma</label>
+                <label className="text-xs font-semibold text-[var(--graphite)]">
+                  Nome da Turma
+                </label>
                 <input
                   type="text"
                   value={newClassName}
                   onChange={(e) => setNewClassName(e.target.value)}
                   placeholder="Ex: 3º Ano B"
-                  className="mt-2 w-full rounded-xl border border-blue-200 px-4 py-2.5 text-sm text-gray-700 outline-none transition focus:border-blue-400"
+                  className="mt-2 w-full rounded-xl border border-[var(--fog)] px-4 py-2.5 text-sm text-[var(--ink)] outline-none transition focus:border-[var(--chalk)]"
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-600">Título da Tarefa</label>
+                <label className="text-xs font-semibold text-[var(--graphite)]">
+                  Título da Tarefa
+                </label>
                 <input
                   type="text"
                   value={newTaskTitle}
                   onChange={(e) => setNewTaskTitle(e.target.value)}
                   placeholder="Ex: Revisão de redação"
-                  className="mt-2 w-full rounded-xl border border-blue-200 px-4 py-2.5 text-sm text-gray-700 outline-none transition focus:border-blue-400"
+                  className="mt-2 w-full rounded-xl border border-[var(--fog)] px-4 py-2.5 text-sm text-[var(--ink)] outline-none transition focus:border-[var(--chalk)]"
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-600">
-                  Descrição da Tarefa <span className="text-gray-400">(opcional)</span>
+                <label className="text-xs font-semibold text-[var(--graphite)]">
+                  Descrição da Tarefa <span className="text-[var(--graphite)]">(opcional)</span>
                 </label>
                 <textarea
                   value={newTaskDescription}
                   onChange={(e) => setNewTaskDescription(e.target.value)}
                   placeholder="Ex: Revisar o texto quanto à gramática e ortografia"
-                  className="mt-2 w-full rounded-xl border border-blue-200 px-4 py-2.5 text-sm text-gray-700 outline-none transition focus:border-blue-400"
+                  className="mt-2 w-full rounded-xl border border-[var(--fog)] px-4 py-2.5 text-sm text-[var(--ink)] outline-none transition focus:border-[var(--chalk)]"
                   rows={3}
                 />
               </div>
-              {createError && <p className="text-xs text-red-500">{createError}</p>}
+              {createError && <p className="text-xs text-[var(--rubric)]">{createError}</p>}
             </div>
           )}
         </div>
@@ -300,7 +326,7 @@ export default function ClassTaskModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full border border-blue-100 px-6 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-50"
+            className="rounded-full border border-[var(--fog)] px-6 py-2 text-sm font-semibold text-[var(--graphite)] transition hover:bg-[var(--wash)]"
           >
             Cancelar
           </button>
@@ -309,7 +335,7 @@ export default function ClassTaskModal({
             disabled={
               activeTab === 'select'
                 ? !selectedTaskId || !selectedClassId
-                : isCreating || !newClassName.trim() || !newTaskTitle.trim()
+                : isCreating || !newClassName.trim() || !newTaskTitle.trim() || !effectiveUserId
             }
             onClick={() => {
               if (activeTab === 'select') {
@@ -326,7 +352,7 @@ export default function ClassTaskModal({
                 handleCreateClassAndTask();
               }
             }}
-            className="rounded-full bg-blue-600 px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+            className="rounded-full bg-[var(--chalk)] px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--chalk-strong)] disabled:cursor-not-allowed disabled:bg-[var(--fog)]"
           >
             {activeTab === 'create' && isCreating ? 'Criando...' : 'Continuar'}
           </button>

@@ -1,5 +1,52 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap');
 @import 'tailwindcss';
 
 body {
-  font-family: Arial, sans-serif;
+  font-family: 'Instrument Sans', 'Helvetica Neue', sans-serif;
+  background: #f7f8fa;
+  color: #201b16;
+}
+
+.teched-main {
+  --ink: #201b16;
+  --paper: #f7f8fa;
+  --paper-soft: #ffffff;
+  --paper-strong: #eef1f4;
+  --chalk: #1e6a5c;
+  --chalk-strong: #18594f;
+  --rubric: #b14a4a;
+  --amber: #d9a94d;
+  --graphite: #5f564c;
+  --tab: #2f7c78;
+  --fog: #cfd6dd;
+  --wash: #e9edf2;
+  font-family: 'Instrument Sans', 'Helvetica Neue', sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.teched-main h1,
+.teched-main h2,
+.teched-main h3 {
+  font-family: 'Fraunces', Georgia, serif;
+}
+
+.class-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #1e6a5c transparent;
+}
+
+.class-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.class-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.class-scroll::-webkit-scrollbar-thumb {
+  background: #1e6a5c;
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
 }

@@ -28,6 +28,11 @@ export const useExtractionFlow = (params: {
   setCachedFileName: (value: string | null) => void;
   setSelectedFiles: (value: File[]) => void;
   resetBulkProgress: () => void;
+  onExtractionComplete?: (payload: {
+    classId: string;
+    taskId: string;
+    mode: 'single' | 'bulk';
+  }) => void;
 }) => {
   const {
     documentType,
@@ -41,6 +46,7 @@ export const useExtractionFlow = (params: {
     setBulkCompleted,
     setCachedFileName,
     resetBulkProgress,
+    onExtractionComplete,
   } = params;
 
   const [isUploading, setIsUploading] = useState(false);
@@ -115,6 +121,7 @@ export const useExtractionFlow = (params: {
         formData.append('files', file);
       });
       formData.append('document_type', documentType);
+      formData.append('documentType', documentType);
       if (authUser) {
         formData.append('user_id', authUser.id);
       }
@@ -136,6 +143,9 @@ export const useExtractionFlow = (params: {
 
       if (payload.batch_id) {
         startBulkStream(payload.batch_id);
+      }
+      if (classId && taskId) {
+        onExtractionComplete?.({ classId, taskId, mode: 'bulk' });
       }
     } catch (uploadError) {
       const message =
@@ -203,6 +213,9 @@ export const useExtractionFlow = (params: {
       if (cacheKey) {
         localStorage.setItem(cacheKey, JSON.stringify(payload));
       }
+      if (classId && taskId) {
+        onExtractionComplete?.({ classId, taskId, mode: 'single' });
+      }
     } catch (uploadError) {
       const message =
         uploadError instanceof Error ? uploadError.message : 'Erro inesperado ao enviar o arquivo.';
@@ -214,7 +227,6 @@ export const useExtractionFlow = (params: {
 
   const handleFileChange = () => {
     clearResults();
-    resetBulkProgress();
   };
 
   const markManualStart = () => {

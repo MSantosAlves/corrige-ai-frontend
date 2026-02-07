@@ -8,6 +8,7 @@ export const useAuthFlow = (setAuthUser: (user: AuthUser) => void) => {
   const [authName, setAuthName] = useState('');
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
+  const [authSignUpKey, setAuthSignUpKey] = useState('');
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
 
@@ -21,6 +22,7 @@ export const useAuthFlow = (setAuthUser: (user: AuthUser) => void) => {
         name: authName.trim(),
         email: authEmail.trim(),
         password: authPassword,
+        signUpKey: authSignUpKey.trim(),
       });
       const userName = payload.user?.name || 'Usuario';
       const userId = payload.user?.id || 'user_unknown';
@@ -50,6 +52,8 @@ export const useAuthFlow = (setAuthUser: (user: AuthUser) => void) => {
     setAuthEmail,
     authPassword,
     setAuthPassword,
+    authSignUpKey,
+    setAuthSignUpKey,
     authError,
     authLoading,
     handleAuth,

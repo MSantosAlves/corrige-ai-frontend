@@ -1,4 +1,9 @@
 export const DEFAULT_VALID_EXTENSIONS = ['.pdf', '.png', '.jpeg', '.jpg', '.jpepg'];
+export const DEFAULT_VALID_MIME_TYPES = [
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+];
 
 export const fileToBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -33,10 +38,16 @@ export const mergeFiles = (current: File[], incoming: File[]) => {
   return Array.from(map.values());
 };
 
-export const filterValidFiles = (incoming: File[], extensions = DEFAULT_VALID_EXTENSIONS) => {
+export const filterValidFiles = (
+  incoming: File[],
+  extensions = DEFAULT_VALID_EXTENSIONS,
+  mimeTypes = DEFAULT_VALID_MIME_TYPES,
+) => {
   const validFiles = incoming.filter((file) => {
     const fileName = file.name.toLowerCase();
-    return extensions.some((ext) => fileName.endsWith(ext));
+    const matchesExtension = extensions.some((ext) => fileName.endsWith(ext));
+    const matchesMime = Boolean(file.type) && mimeTypes.includes(file.type);
+    return matchesExtension || matchesMime;
   });
   return {
     validFiles,

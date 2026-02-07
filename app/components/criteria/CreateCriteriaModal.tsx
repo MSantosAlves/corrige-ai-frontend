@@ -25,8 +25,7 @@ type CreateCriteriaModalProps = {
 };
 
 export const CreateCriteriaModal = ({ isOpen, onClose, onSubmit }: CreateCriteriaModalProps) => {
-  const createTempId = () =>
-    `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const createTempId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [classification, setClassification] = useState(classificationOptions[0].value);
@@ -58,9 +57,7 @@ export const CreateCriteriaModal = ({ isOpen, onClose, onSubmit }: CreateCriteri
   };
 
   const handleItemChange = (index: number, patch: Partial<GradeCriteriaItem>) => {
-    setItems((prev) =>
-      prev.map((item, idx) => (idx === index ? { ...item, ...patch } : item)),
-    );
+    setItems((prev) => prev.map((item, idx) => (idx === index ? { ...item, ...patch } : item)));
   };
 
   const handleSubmit = async () => {
@@ -103,9 +100,7 @@ export const CreateCriteriaModal = ({ isOpen, onClose, onSubmit }: CreateCriteri
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6">
       <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
         <h2 className="text-lg font-semibold text-gray-900">Criar critério</h2>
-        <p className="mt-1 text-sm text-gray-600">
-          Defina a avaliação e os itens de correção.
-        </p>
+        <p className="mt-1 text-sm text-gray-600">Defina a avaliação e os itens de correção.</p>
 
         <div className="mt-4 grid gap-4">
           <div>
@@ -201,9 +196,7 @@ export const CreateCriteriaModal = ({ isOpen, onClose, onSubmit }: CreateCriteri
                 <textarea
                   placeholder="Descrição (opcional)"
                   value={item.description ?? ''}
-                  onChange={(event) =>
-                    handleItemChange(index, { description: event.target.value })
-                  }
+                  onChange={(event) => handleItemChange(index, { description: event.target.value })}
                   rows={2}
                   className="mt-3 w-full rounded-lg border border-blue-200 px-3 py-2 text-sm text-gray-700 outline-none transition focus:border-blue-400"
                 />

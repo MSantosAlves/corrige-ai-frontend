@@ -7,6 +7,7 @@ export const signInOrUp = async (data: {
   name?: string;
   email: string;
   password: string;
+  signUpKey?: string;
 }): Promise<{ user?: { id?: string; name?: string }; token?: string }> => {
   const response = await fetch(`${apiClient.baseUrl}/auth/${data.mode}`, {
     method: 'POST',
@@ -15,6 +16,7 @@ export const signInOrUp = async (data: {
       name: data.mode === 'sign-up' ? data.name : undefined,
       email: data.email,
       password: data.password,
+      signUpKey: data.mode === 'sign-up' ? data.signUpKey : undefined,
     }),
   });
 

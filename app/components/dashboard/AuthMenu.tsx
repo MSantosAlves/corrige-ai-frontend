@@ -16,6 +16,8 @@ type AuthMenuProps = {
   setAuthEmail: (value: string) => void;
   authPassword: string;
   setAuthPassword: (value: string) => void;
+  authSignUpKey: string;
+  setAuthSignUpKey: (value: string) => void;
   authLoading: boolean;
   authError: string;
   onSubmitAuth: (mode: 'sign-in' | 'sign-up') => void;
@@ -40,6 +42,8 @@ export const AuthMenu = ({
   setAuthEmail,
   authPassword,
   setAuthPassword,
+  authSignUpKey,
+  setAuthSignUpKey,
   authLoading,
   authError,
   onSubmitAuth,
@@ -49,26 +53,26 @@ export const AuthMenu = ({
   loginMenuRef,
   userMenuRef,
 }: AuthMenuProps) => (
-  <div className="absolute right-6 top-6 z-10" ref={loginMenuRef}>
+  <div className="relative z-10" ref={loginMenuRef}>
     {authUser ? (
       <div className="relative" ref={userMenuRef}>
         <button
           type="button"
           onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-          className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-6 py-2.5 text-sm font-semibold text-blue-700 shadow-sm transition hover:border-blue-300 hover:text-blue-800"
+          className="inline-flex items-center gap-2 rounded-lg bg-[var(--chalk)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--chalk-strong)]"
         >
           {authUser.name}
           <svg
             aria-hidden="true"
             viewBox="0 0 20 20"
-            className="h-4 w-4 text-blue-500"
+            className="h-4 w-4 text-white"
             fill="currentColor"
           >
             <path d="M5.5 7.5 10 12l4.5-4.5" />
           </svg>
         </button>
         {isUserMenuOpen && (
-          <div className="absolute right-0 mt-3 w-48 rounded-xl border border-blue-100 bg-white p-2 shadow-lg">
+          <div className="absolute right-0 mt-3 w-52 rounded-xl border border-[var(--fog)] bg-white p-2 shadow-lg">
             {['Perfil', 'Minhas turmas', 'Critérios de avaliação', 'Sair'].map((label) => (
               <button
                 key={label}
@@ -85,7 +89,7 @@ export const AuthMenu = ({
                   }
                   setIsUserMenuOpen(false);
                 }}
-                className="w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-gray-700 transition hover:bg-blue-50"
+                className="w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-[var(--ink)] transition hover:bg-[var(--wash)]"
               >
                 {label}
               </button>
@@ -97,13 +101,13 @@ export const AuthMenu = ({
       <button
         type="button"
         onClick={() => setIsLoginMenuOpen(!isLoginMenuOpen)}
-        className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-6 py-2.5 text-sm font-semibold text-blue-700 shadow-sm transition hover:border-blue-300 hover:text-blue-800"
+        className="inline-flex items-center gap-2 rounded-lg bg-[var(--chalk)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--chalk-strong)]"
       >
         Entrar
         <svg
           aria-hidden="true"
           viewBox="0 0 20 20"
-          className="h-4 w-4 text-blue-500"
+          className="h-4 w-4 text-white"
           fill="currentColor"
         >
           <path d="M5.5 7.5 10 12l4.5-4.5" />
@@ -112,13 +116,27 @@ export const AuthMenu = ({
     )}
 
     {isLoginMenuOpen && !authUser && (
-      <div className="absolute right-0 mt-3 w-80 rounded-2xl border border-blue-100 bg-white p-5 shadow-xl">
-        <div className="flex items-center gap-2 border-b border-blue-100 pb-3 text-sm font-semibold text-blue-700">
-          <button
-            type="button"
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md">
+        <div
+          className="w-full max-w-lg rounded-2xl border border-[var(--fog)] bg-white p-7 shadow-xl"
+          style={{ width: '110%' }}
+          ref={loginMenuRef}
+        >
+        <div className="flex flex-col gap-4 pb-4">
+          <div className="flex flex-col items-center text-center">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.35em] text-[var(--graphite)]">
+              Plataforma
+            </span>
+            <span className="text-2xl font-semibold text-[var(--chalk)]">RevisaFácil</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm font-semibold text-[var(--chalk)]">
+            <button
+              type="button"
             onClick={() => setAuthMode('sign-in')}
             className={`flex-1 pb-2 text-center ${
-              authMode === 'sign-in' ? 'border-b-2 border-blue-600 text-blue-700' : 'text-gray-400'
+              authMode === 'sign-in'
+                ? 'border-b-2 border-[var(--chalk)] text-[var(--chalk)]'
+                : 'text-[var(--graphite)]'
             }`}
           >
             Entrar
@@ -127,14 +145,17 @@ export const AuthMenu = ({
             type="button"
             onClick={() => setAuthMode('sign-up')}
             className={`flex-1 pb-2 text-center ${
-              authMode === 'sign-up' ? 'border-b-2 border-blue-600 text-blue-700' : 'text-gray-400'
+              authMode === 'sign-up'
+                ? 'border-b-2 border-[var(--chalk)] text-[var(--chalk)]'
+                : 'text-[var(--graphite)]'
             }`}
           >
             Cadastrar
           </button>
+          </div>
         </div>
         <form
-          className="mt-4 flex flex-col gap-4"
+          className="mt-5 flex flex-col gap-4"
           onSubmit={(event) => {
             event.preventDefault();
             onSubmitAuth(authMode);
@@ -142,48 +163,64 @@ export const AuthMenu = ({
         >
           {authMode === 'sign-up' && (
             <div>
-              <label className="text-xs font-semibold text-gray-600">Nome</label>
+              <label className="text-xs font-semibold text-[var(--graphite)]">Nome</label>
               <input
                 type="text"
                 placeholder="Seu nome"
                 value={authName}
                 onChange={(event) => setAuthName(event.target.value)}
-                className="mt-2 w-full rounded-xl border border-blue-200 px-4 py-2.5 text-sm text-gray-700 outline-none transition focus:border-blue-400"
+                className="mt-2 w-full rounded-xl border border-[var(--fog)] px-4 py-2.5 text-sm text-[var(--ink)] outline-none transition focus:border-[var(--chalk)]"
               />
             </div>
           )}
           <div>
-            <label className="text-xs font-semibold text-gray-600">Email</label>
+            <label className="text-xs font-semibold text-[var(--graphite)]">Email</label>
             <input
               type="email"
               placeholder="seu@email.com"
               value={authEmail}
               onChange={(event) => setAuthEmail(event.target.value)}
-              className="mt-2 w-full rounded-xl border border-blue-200 px-4 py-2.5 text-sm text-gray-700 outline-none transition focus:border-blue-400"
+              className="mt-2 w-full rounded-xl border border-[var(--fog)] px-4 py-2.5 text-sm text-[var(--ink)] outline-none transition focus:border-[var(--chalk)]"
             />
           </div>
           <div>
-            <label className="text-xs font-semibold text-gray-600">Senha</label>
+            <label className="text-xs font-semibold text-[var(--graphite)]">Senha</label>
             <input
               type="password"
               placeholder="********"
               value={authPassword}
               onChange={(event) => setAuthPassword(event.target.value)}
-              className="mt-2 w-full rounded-xl border border-blue-200 px-4 py-2.5 text-sm text-gray-700 outline-none transition focus:border-blue-400"
+              className="mt-2 w-full rounded-xl border border-[var(--fog)] px-4 py-2.5 text-sm text-[var(--ink)] outline-none transition focus:border-[var(--chalk)]"
             />
           </div>
+          {authMode === 'sign-up' && (
+            <div>
+              <label className="text-xs font-semibold text-[var(--graphite)]">
+                Chave de acesso (opcional)
+              </label>
+              <input
+                type="password"
+                placeholder="Sua chave de acesso"
+                value={authSignUpKey}
+                onChange={(event) => setAuthSignUpKey(event.target.value)}
+                className="mt-2 w-full rounded-xl border border-[var(--fog)] px-4 py-2.5 text-sm text-[var(--ink)] outline-none transition focus:border-[var(--chalk)]"
+              />
+            </div>
+          )}
           <button
             type="submit"
             disabled={authLoading}
-            className="mt-1 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400"
+            className="mt-1 rounded-xl bg-[var(--chalk)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--chalk-strong)] disabled:cursor-not-allowed disabled:bg-[var(--fog)]"
           >
             {authLoading ? 'Enviando...' : authMode === 'sign-in' ? 'Entrar' : 'Cadastrar'}
           </button>
-          {authError && <span className="text-center text-xs text-red-500">{authError}</span>}
+          {authError && (
+            <span className="text-center text-xs text-[var(--rubric)]">{authError}</span>
+          )}
           <button
             type="button"
             onClick={() => onSubmitAuth('sign-in')}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:border-blue-200"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--fog)] bg-white px-3 py-2 text-sm font-semibold text-[var(--ink)] shadow-sm transition hover:border-[var(--chalk)]"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
               <path
@@ -206,6 +243,7 @@ export const AuthMenu = ({
             Continuar com Google
           </button>
         </form>
+        </div>
       </div>
     )}
   </div>

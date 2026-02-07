@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppHeader } from '../components/layout/AppHeader';
 import { CreateCriteriaModal } from '../components/criteria/CreateCriteriaModal';
@@ -159,9 +159,7 @@ export default function GradeCriteriaPage() {
                     <option value="all">Todos</option>
                   </select>
                 </div>
-                <span className="text-xs text-[var(--graphite)]">
-                  {items.length} critério(s)
-                </span>
+                <span className="text-xs text-[var(--graphite)]">{items.length} critério(s)</span>
               </div>
               <table className="w-full border-collapse text-left text-sm">
                 <thead className="text-xs uppercase tracking-[0.2em] text-[var(--graphite)]">

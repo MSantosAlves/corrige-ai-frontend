@@ -1,15 +1,8 @@
 import { useRef, useState } from 'react';
 
-import {
-  extractText,
-  extractTextBulk,
-  type BulkExtractionResponse,
-} from '../services/extractions-service';
-import {
-  getAnalysisCacheKey,
-  normalizeJpepgFile,
-  parseCachedExtractionPayload,
-} from '../helpers/file-helpers';
+import { extractTextBulk, type BulkExtractionResponse } from '../services/extractions-service';
+import { normalizeJpepgFile } from '../helpers/file-helpers';
+import { persistPlanUsage, type PlanUsage } from '../helpers/plan-usage';
 
 type DocumentTypeKey = 'pdf_native' | 'printed' | 'handwritten' | 'auto';
 
@@ -28,11 +21,10 @@ export const useExtractionFlow = (params: {
   setCachedFileName: (value: string | null) => void;
   setSelectedFiles: (value: File[]) => void;
   resetBulkProgress: () => void;
-  onExtractionComplete?: (payload: {
-    classId: string;
-    taskId: string;
-    mode: 'single' | 'bulk';
-  }) => void;
+  setUploadCompleted: (value: boolean) => void;
+  setUploadStarted: (value: boolean) => void;
+  onExtractionComplete?: (payload: { classId: string; taskId: string; mode: 'bulk' }) => void;
+  onPlanUsageUpdate?: (payload: PlanUsage) => void;
 }) => {
   const {
     documentType,
@@ -45,8 +37,10 @@ export const useExtractionFlow = (params: {
     setBulkTotal,
     setBulkCompleted,
     setCachedFileName,
-    resetBulkProgress,
+    setUploadCompleted,
+    setUploadStarted,
     onExtractionComplete,
+    onPlanUsageUpdate,
   } = params;
 
   const [isUploading, setIsUploading] = useState(false);
@@ -100,11 +94,7 @@ export const useExtractionFlow = (params: {
     files: File[],
     context?: { classId?: string | null; taskId?: string | null },
   ) => {
-    if (files.length > 1) {
-      await doBulkUpload(files, context);
-      return;
-    }
-    await doUpload(files[0], context);
+    await doBulkUpload(files, context);
   };
 
   const doBulkUpload = async (
@@ -115,11 +105,17 @@ export const useExtractionFlow = (params: {
       setIsUploading(true);
       clearResults();
       setError('');
+      setUploadCompleted(false);
+      setUploadStarted(true);
 
       const formData = new FormData();
-      files.forEach((file) => {
+      const normalizedFiles = files.map((file) => normalizeJpepgFile(file));
+      normalizedFiles.forEach((file) => {
         formData.append('files', file);
       });
+      if (normalizedFiles.length === 1) {
+        setCachedFileName(normalizedFiles[0].name);
+      }
       formData.append('document_type', documentType);
       formData.append('documentType', documentType);
       if (authUser) {
@@ -140,6 +136,11 @@ export const useExtractionFlow = (params: {
         setBulkTotal(total);
         setBulkCompleted(completed);
       }
+      setUploadCompleted(true);
+      const updatedPlanUsage = persistPlanUsage(payload);
+      if (updatedPlanUsage) {
+        onPlanUsageUpdate?.(updatedPlanUsage);
+      }
 
       if (payload.batch_id) {
         startBulkStream(payload.batch_id);
@@ -148,6 +149,7 @@ export const useExtractionFlow = (params: {
         onExtractionComplete?.({ classId, taskId, mode: 'bulk' });
       }
     } catch (uploadError) {
+      setUploadCompleted(false);
       const message =
         uploadError instanceof Error
           ? uploadError.message
@@ -158,75 +160,10 @@ export const useExtractionFlow = (params: {
     }
   };
 
-  const doUpload = async (
-    file: File,
-    context?: { classId?: string | null; taskId?: string | null },
-  ) => {
-    try {
-      setIsUploading(true);
-      clearResults();
-      setError('');
-
-      const normalizedFile = normalizeJpepgFile(file);
-      const cacheKey = await getAnalysisCacheKey(normalizedFile);
-      setCachedFileName(normalizedFile.name);
-      const cachedPayload = localStorage.getItem(cacheKey);
-      if (cachedPayload !== null) {
-        const cached = parseCachedExtractionPayload(cachedPayload);
-        setCachedFileName(cached.cachedFileName || normalizedFile.name);
-        setResultText(cached.resultText);
-        setAnalysisText(cached.analysisText);
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append('file', normalizedFile);
-      formData.append('documentType', documentType);
-      if (authUser) {
-        formData.append('user_id', authUser.id);
-      }
-      const classId = context?.classId ?? selectedClassId;
-      const taskId = context?.taskId ?? selectedTaskId;
-      if (classId) {
-        formData.append('class_id', classId);
-      }
-      if (taskId) {
-        formData.append('task_id', taskId);
-      }
-      const payload = (await extractText(formData)) as Record<string, unknown> & {
-        text?: string;
-        analysis?: string;
-      };
-      setResultText(
-        typeof payload.text === 'string' && payload.text.trim().length > 0
-          ? payload.text
-          : 'Nenhum texto retornado.',
-      );
-      const analysisValue =
-        typeof payload.analysis === 'string'
-          ? payload.analysis
-          : payload.analysis !== undefined
-            ? JSON.stringify(payload.analysis, null, 2)
-            : '';
-      const trimmedAnalysis = analysisValue.trim().length > 0 ? analysisValue : '';
-      setAnalysisText(trimmedAnalysis);
-      if (cacheKey) {
-        localStorage.setItem(cacheKey, JSON.stringify(payload));
-      }
-      if (classId && taskId) {
-        onExtractionComplete?.({ classId, taskId, mode: 'single' });
-      }
-    } catch (uploadError) {
-      const message =
-        uploadError instanceof Error ? uploadError.message : 'Erro inesperado ao enviar o arquivo.';
-      setError(message);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
   const handleFileChange = () => {
     clearResults();
+    setUploadCompleted(false);
+    setUploadStarted(false);
   };
 
   const markManualStart = () => {
@@ -246,7 +183,6 @@ export const useExtractionFlow = (params: {
     uploadFiles,
     doUploadMany,
     doBulkUpload,
-    doUpload,
     handleFileChange,
   };
 };

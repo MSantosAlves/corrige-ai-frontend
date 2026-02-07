@@ -4,10 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppHeader } from './components/layout/AppHeader';
 import { useRouter } from 'next/navigation';
 import ClassTaskModal from './components/ClassTaskModal';
-import { AuthMenu } from './components/dashboard/AuthMenu';
 import { ClassTaskSidebar } from './components/dashboard/ClassTaskSidebar';
 import { FileDropzone } from './components/dashboard/FileDropzone';
-import { ResultsPanel } from './components/dashboard/ResultsPanel';
 import { ZoomModal } from './components/dashboard/ZoomModal';
 import { getFileKey } from './helpers/file-helpers';
 import { useAuthSession } from './hooks/use-auth-session';
@@ -18,6 +16,7 @@ import { useClickOutside } from './hooks/use-click-outside';
 import { useExtractionFlow } from './hooks/use-extraction-flow';
 import { useFilePreview } from './hooks/use-file-preview';
 import { useFileSelection } from './hooks/use-file-selection';
+import { getStoredPlanUsage, type PlanUsage } from './helpers/plan-usage';
 
 const documentTypeMap = {
   pdf_native: 'PDF Nativo',
@@ -39,6 +38,9 @@ export default function Home() {
     taskId: string;
   } | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [uploadCompleted, setUploadCompleted] = useState(false);
+  const [uploadStarted, setUploadStarted] = useState(false);
+  const [planUsage, setPlanUsage] = useState<PlanUsage | null>(null);
   const {
     selectedFiles,
     setSelectedFiles,
@@ -63,7 +65,9 @@ export default function Home() {
     authError,
     authLoading,
     handleAuth,
-  } = useAuthFlow(setAuthUser);
+  } = useAuthFlow(setAuthUser, (updatedPlanUsage) => {
+    setPlanUsage(updatedPlanUsage);
+  });
 
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
@@ -80,6 +84,8 @@ export default function Home() {
     setBulkTotal,
     setBulkCompleted,
     bulkProgressPercent,
+    bulkExtractedPercent,
+    bulkGradedPercent,
     isBulkInProgress,
     resetBulkProgress,
     startBulkStream,
@@ -112,8 +118,6 @@ export default function Home() {
   } = useClassTaskTree(authUser?.id);
   const {
     isUploading,
-    resultText,
-    analysisText,
     error,
     clearResults,
     markManualStart,
@@ -132,33 +136,35 @@ export default function Home() {
     setCachedFileName,
     setSelectedFiles,
     resetBulkProgress,
-    onExtractionComplete: ({ classId, taskId, mode }) => {
-      if (mode === 'single') {
-        setRedirectTarget({ classId, taskId });
-        setIsRedirecting(true);
-        return;
-      }
+    setUploadCompleted,
+    setUploadStarted,
+    onExtractionComplete: ({ classId, taskId }) => {
       setPendingBulkRedirect({ classId, taskId });
     },
+    onPlanUsageUpdate: (updatedPlanUsage) => {
+      setPlanUsage(updatedPlanUsage);
+    },
   });
-  const displayError = selectionError || error;
-  const hasFiles = selectedFiles.length > 0;
-  const rubricProgress = isBulkInProgress || isUploading ? bulkProgressPercent : hasFiles ? 25 : 0;
-  const currentStepIndex = !hasFiles
-    ? -1
-    : rubricProgress >= 90
-      ? 3
-      : rubricProgress >= 75
-        ? 2
-        : rubricProgress >= 50
-          ? 1
-          : 0;
+  const isPlanQuotaReached = Boolean(
+    planUsage && planUsage.quota > 0 && planUsage.used >= planUsage.quota,
+  );
+  const displayError = isPlanQuotaReached
+    ? 'Você atingiu o limite mensal de uso do seu plano. Por favor, faça upgrade para continuar.'
+    : selectionError || error;
+  const envioProgress = uploadCompleted ? 100 : 0;
+  const extracaoProgress = bulkExtractedPercent;
+  const correcaoProgress = bulkGradedPercent;
+  const relatorioProgress = bulkProgressPercent;
+  const showStepIcons = uploadStarted;
 
   const handleSignOut = () => {
     setAuthUser(null);
     localStorage.removeItem('sessionToken');
     localStorage.removeItem('sessionUserName');
     localStorage.removeItem('sessionUserId');
+    sessionStorage.removeItem('userQuota');
+    sessionStorage.removeItem('userUsage');
+    setPlanUsage(null);
     setSelectedFiles([]);
     setCachedFileName(null);
     clearResults();
@@ -169,7 +175,26 @@ export default function Home() {
     setIsClassTaskModalOpen(false);
     setIsTypeMenuOpen(false);
     setIsDragging(false);
+    setUploadCompleted(false);
+    setUploadStarted(false);
   };
+
+  useEffect(() => {
+    const stored = getStoredPlanUsage();
+    if (stored) {
+      setPlanUsage(stored);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!authUser) {
+      return;
+    }
+    const stored = getStoredPlanUsage();
+    if (stored) {
+      setPlanUsage(stored);
+    }
+  }, [authUser]);
 
   useEffect(() => {
     if (bulkProgressPercent < 100 || !pendingBulkRedirect) {
@@ -303,7 +328,8 @@ export default function Home() {
               Plataforma de correção inteligente de atividades escolares
             </h1>
             <p className="mt-3 max-w-2xl text-sm text-[var(--graphite)] sm:text-base">
-              Organize suas turmas, envie lotes de atividades e receba relatórios prontos em minutos.
+              Organize suas turmas, envie lotes de atividades e receba relatórios prontos em
+              minutos.
             </p>
           </div>
         </header>
@@ -330,9 +356,26 @@ export default function Home() {
             isAuthenticated={Boolean(authUser)}
             onRequireAuth={() => setIsLoginMenuOpen(true)}
             showPlan={Boolean(authUser)}
+            planUsage={planUsage}
           />
 
           <div className="flex flex-col gap-6">
+            {isRedirecting && (
+              <div className="rounded-2xl border border-[var(--fog)] bg-[var(--paper-soft)] p-4 text-sm text-[var(--graphite)]">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <span>Redirecionando para os resultados...</span>
+                  <button
+                    type="button"
+                    disabled
+                    className="inline-flex items-center gap-2 rounded-lg bg-[var(--chalk)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white opacity-80"
+                  >
+                    <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-white/70 border-t-white" />
+                    Redirecionando
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="rounded-2xl border border-[var(--fog)] bg-[var(--paper-soft)] p-6">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
@@ -350,40 +393,75 @@ export default function Home() {
 
               <div className="mt-6">
                 <div className="grid grid-cols-4 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--chalk)]">
-                  <span className="text-center">Envio</span>
-                  <span className="text-center">Extração</span>
-                  <span className="text-center">Correção</span>
-                  <span className="text-center">Relatório</span>
+                  {[
+                    { label: '1. Envio', value: envioProgress },
+                    { label: '2. Extração', value: extracaoProgress },
+                    { label: '3. Correção', value: correcaoProgress },
+                    { label: '4. Relatório', value: relatorioProgress },
+                  ].map((step) => (
+                    <span key={step.label} className="flex items-center justify-center gap-2">
+                      {step.label}
+                      {showStepIcons &&
+                        (step.value >= 100 ? (
+                          <svg
+                            aria-hidden="true"
+                            viewBox="0 0 20 20"
+                            className="h-3.5 w-3.5 text-[var(--chalk)]"
+                            fill="currentColor"
+                          >
+                            <path d="M7.8 13.6 4.7 10.5l-1.1 1.1 4.2 4.2 8.1-8.1-1.1-1.1z" />
+                          </svg>
+                        ) : (
+                          <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-[var(--chalk)] border-t-transparent" />
+                        ))}
+                    </span>
+                  ))}
                 </div>
-                <div className="relative mt-3 h-2 w-full overflow-hidden rounded-full bg-[var(--wash)]">
-                  <div
-                    className="h-full rounded-full bg-[var(--chalk)] transition-all"
-                    style={{ width: `${rubricProgress}%` }}
-                  />
+                <div className="mt-3 grid grid-cols-4 gap-3">
+                  {[
+                    { key: 'envio', value: envioProgress },
+                    { key: 'extracao', value: extracaoProgress },
+                    { key: 'correcao', value: correcaoProgress },
+                    { key: 'relatorio', value: relatorioProgress },
+                  ].map((item) => (
+                    <div
+                      key={item.key}
+                      className="relative h-2 w-full overflow-hidden rounded-full bg-[var(--wash)]"
+                    >
+                      <div
+                        className="h-full rounded-full bg-[var(--chalk)] transition-all"
+                        style={{ width: `${item.value}%` }}
+                      />
+                    </div>
+                  ))}
                 </div>
                 <div className="mt-3 grid grid-cols-4 gap-3 text-center">
                   {[
                     {
                       title: 'Recebido',
                       description: 'Arquivos prontos para processamento',
+                      isActive: envioProgress > 0,
                     },
                     {
                       title: 'Extraído',
                       description: 'Texto limpo pronto para análise',
+                      isActive: extracaoProgress > 0,
                     },
                     {
                       title: 'Corrigido',
                       description: 'Critérios de correção aplicados',
+                      isActive: correcaoProgress > 0,
                     },
                     {
                       title: 'Relatório',
                       description: 'Relatório final disponível',
+                      isActive: relatorioProgress > 0,
                     },
-                  ].map((step, index) => (
+                  ].map((step) => (
                     <div
                       key={step.title}
                       className={`rounded-xl border px-3 py-3 text-xs ${
-                        currentStepIndex >= index
+                        step.isActive
                           ? 'border-[var(--chalk)] bg-[var(--paper-soft)]'
                           : 'border-[var(--fog)] bg-[var(--paper)]'
                       }`}
@@ -419,6 +497,8 @@ export default function Home() {
                 if (nextFiles.length === 0) {
                   setCachedFileName(null);
                   clearResults();
+                  setUploadCompleted(false);
+                  setUploadStarted(false);
                 }
               }}
               getFileKey={getFileKey}
@@ -437,24 +517,9 @@ export default function Home() {
               }}
               isAuthenticated={Boolean(authUser)}
               onRequireAuth={() => setIsLoginMenuOpen(true)}
+              error={displayError}
+              isDisabled={isPlanQuotaReached}
             />
-
-            {isRedirecting && (
-              <div className="mt-4 rounded-2xl border border-[var(--fog)] bg-[var(--paper-soft)] p-4 text-sm text-[var(--graphite)]">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <span>Redirecionando para os resultados...</span>
-                  <button
-                    type="button"
-                    disabled
-                    className="inline-flex items-center gap-2 rounded-lg bg-[var(--chalk)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white opacity-80"
-                  >
-                    <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-white/70 border-t-white" />
-                    Redirecionando
-                  </button>
-                </div>
-              </div>
-            )}
-
           </div>
 
           <aside className="flex flex-col gap-4">
@@ -469,7 +534,7 @@ export default function Home() {
                   </p>
                   <p className="mt-1 font-semibold">
                     {selectedClassId
-                      ? classes.find((item) => item.id === selectedClassId)?.name ?? '—'
+                      ? (classes.find((item) => item.id === selectedClassId)?.name ?? '—')
                       : 'Nenhuma selecionada'}
                   </p>
                 </div>
@@ -479,9 +544,9 @@ export default function Home() {
                   </p>
                   <p className="mt-1 font-semibold">
                     {selectedTaskId
-                      ? tasksByClassId[selectedClassId ?? '']?.find(
+                      ? (tasksByClassId[selectedClassId ?? '']?.find(
                           (task) => task.id === selectedTaskId,
-                        )?.title ?? '—'
+                        )?.title ?? '—')
                       : 'Selecione uma tarefa'}
                   </p>
                 </div>
@@ -489,9 +554,7 @@ export default function Home() {
                   <p className="text-xs uppercase tracking-[0.2em] text-[var(--graphite)]">
                     Tarefas corrigidas
                   </p>
-                  <p className="mt-1 font-semibold">
-                    {authUser ? '128 tarefas' : '0 tarefas'}
-                  </p>
+                  <p className="mt-1 font-semibold">{authUser ? '128 tarefas' : '0 tarefas'}</p>
                 </div>
                 <div className="rounded-xl border border-[var(--chalk)] bg-white p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--chalk)]">
@@ -511,7 +574,6 @@ export default function Home() {
                 </div>
               </div>
             </div>
-
           </aside>
         </section>
       </div>
@@ -539,7 +601,6 @@ export default function Home() {
         preSelectedTaskId={selectedTaskId ?? undefined}
         initialTab={classTaskModalTab}
       />
-
     </main>
   );
 }

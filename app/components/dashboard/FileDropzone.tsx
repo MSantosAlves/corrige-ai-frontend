@@ -26,14 +26,14 @@ type FileDropzoneProps = {
   onStartReview: () => void;
   isAuthenticated: boolean;
   onRequireAuth: () => void;
+  error: string;
+  isDisabled: boolean;
 };
 
 export const FileDropzone = ({
   isDragging,
   fileLabel,
   selectedFiles,
-  bulkTotal,
-  bulkProgressPercent,
   documentType,
   documentTypes,
   isTypeMenuOpen,
@@ -52,13 +52,15 @@ export const FileDropzone = ({
   onStartReview,
   isAuthenticated,
   onRequireAuth,
+  error,
+  isDisabled,
 }: FileDropzoneProps) => (
   <div className="rounded-2xl border border-[var(--fog)] bg-[var(--paper-soft)] p-6 sm:p-8">
     <div className="flex items-start justify-between gap-4">
       <div>
         <h2 className="text-xl font-semibold text-[var(--ink)]">Bandeja de envio</h2>
         <p className="mt-2 text-sm text-[var(--graphite)]">
-        Envie os arquivos da turma e o sistema organiza a correção automaticamente.
+          Envie os arquivos da turma e o sistema organiza a correção automaticamente.
         </p>
       </div>
       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--paper-strong)] text-[var(--chalk)]">
@@ -83,36 +85,69 @@ export const FileDropzone = ({
       <div className="pointer-events-none absolute -top-2 left-3 right-3 h-full rounded-2xl border border-[var(--fog)] bg-[var(--paper-strong)]" />
       <div className="pointer-events-none absolute -top-1 left-2 right-2 h-full rounded-2xl border border-[var(--fog)] bg-[var(--paper-soft)]" />
       <label
-      htmlFor="file-upload"
-      onDragEnter={onDragEnter}
-      onDragLeave={onDragLeave}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      onClick={(event) => {
-        if (!isAuthenticated) {
-          event.preventDefault();
-          onRequireAuth();
-        }
-      }}
-      className={`relative flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-10 text-center text-sm transition ${
-        isDragging
-          ? 'border-[var(--chalk)] bg-[var(--paper-strong)] text-[var(--chalk-strong)]'
-            : 'border-[var(--fog)] bg-[var(--paper)] text-[var(--graphite)] hover:border-[var(--chalk)] hover:bg-[var(--paper-soft)]'
-        }`}
+        htmlFor="file-upload"
+        onDragEnter={(event) => {
+          if (isDisabled) {
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+          }
+          onDragEnter(event);
+        }}
+        onDragLeave={(event) => {
+          if (isDisabled) {
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+          }
+          onDragLeave(event);
+        }}
+        onDragOver={(event) => {
+          if (isDisabled) {
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+          }
+          onDragOver(event);
+        }}
+        onDrop={(event) => {
+          if (isDisabled) {
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+          }
+          onDrop(event);
+        }}
+        onClick={(event) => {
+          if (isDisabled) {
+            event.preventDefault();
+            return;
+          }
+          if (!isAuthenticated) {
+            event.preventDefault();
+            onRequireAuth();
+          }
+        }}
+        className={`relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-10 text-center text-sm transition ${
+          isDragging
+            ? 'border-[var(--chalk)] bg-[var(--paper-strong)] text-[var(--chalk-strong)]'
+            : 'border-[var(--fog)] bg-[var(--paper)] text-[var(--graphite)]'
+        } ${isDisabled ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:border-[var(--chalk)] hover:bg-[var(--paper-soft)]'}`}
       >
         <span className="text-sm font-semibold text-[var(--ink)]">{fileLabel}</span>
         <span className="mt-1 text-xs text-[var(--graphite)]">
           ou clique para selecionar do computador
         </span>
-      <input
-        id="file-upload"
-        name="file-upload"
-        type="file"
-        accept=".pdf,.png,.jpeg,.jpg"
-        multiple
-        className="sr-only"
-        onChange={onFileChange}
-      />
+        <input
+          id="file-upload"
+          name="file-upload"
+          type="file"
+          accept=".pdf,.png,.jpeg,.jpg"
+          multiple
+          className="sr-only"
+          onChange={onFileChange}
+          disabled={isDisabled}
+        />
       </label>
     </div>
 
@@ -121,21 +156,21 @@ export const FileDropzone = ({
         <div className="flex flex-wrap gap-2">
           {selectedFiles.map((file) => {
             const fileKey = getFileKey(file);
-              return (
-                <span
-                  key={fileKey}
-                  className="inline-flex max-w-full items-center gap-2 rounded-full border border-[var(--fog)] bg-white px-3 py-1 text-xs text-[var(--ink)]"
+            return (
+              <span
+                key={fileKey}
+                className="inline-flex max-w-full items-center gap-2 rounded-full border border-[var(--fog)] bg-white px-3 py-1 text-xs text-[var(--ink)]"
+              >
+                <span className="max-w-[220px] truncate">{file.name}</span>
+                <button
+                  type="button"
+                  onClick={() => onRemoveFile(fileKey)}
+                  className="text-[var(--graphite)] transition hover:text-[var(--rubric)]"
+                  aria-label={`Remover ${file.name}`}
                 >
-                  <span className="max-w-[220px] truncate">{file.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => onRemoveFile(fileKey)}
-                    className="text-[var(--graphite)] transition hover:text-[var(--rubric)]"
-                    aria-label={`Remover ${file.name}`}
-                  >
-                    ×
-                  </button>
-                </span>
+                  ×
+                </button>
+              </span>
             );
           })}
         </div>
@@ -188,7 +223,13 @@ export const FileDropzone = ({
         <button
           type="button"
           onClick={onStartReview}
-          disabled={selectedFiles.length === 0 || !documentType || isUploading || isBulkInProgress}
+          disabled={
+            isDisabled ||
+            selectedFiles.length === 0 ||
+            !documentType ||
+            isUploading ||
+            isBulkInProgress
+          }
           className="inline-flex items-center justify-center rounded-full bg-[var(--chalk)] px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--chalk-strong)] disabled:cursor-not-allowed disabled:bg-[var(--fog)]"
         >
           {isUploading || isBulkInProgress ? (
@@ -202,5 +243,6 @@ export const FileDropzone = ({
         </button>
       </div>
     </div>
+    {error && <p className="mt-3 text-center text-xs text-[var(--rubric)]">{error}</p>}
   </div>
 );

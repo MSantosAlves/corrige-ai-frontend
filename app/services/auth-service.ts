@@ -8,7 +8,10 @@ export const signInOrUp = async (data: {
   email: string;
   password: string;
   signUpKey?: string;
-}): Promise<{ user?: { id?: string; name?: string }; token?: string }> => {
+}): Promise<{
+  user?: { id?: string; name?: string; planQuota?: number; planUsage?: number };
+  token?: string;
+}> => {
   const response = await fetch(`${apiClient.baseUrl}/auth/${data.mode}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },

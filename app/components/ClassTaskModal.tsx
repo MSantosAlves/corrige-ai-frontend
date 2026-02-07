@@ -180,9 +180,7 @@ export default function ClassTaskModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6">
       <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-        <h2 className="text-lg font-semibold text-[var(--ink)]">
-          Selecione uma Turma e Tarefa
-        </h2>
+        <h2 className="text-lg font-semibold text-[var(--ink)]">Selecione uma Turma e Tarefa</h2>
         <p className="mt-1 text-sm text-[var(--graphite)]">
           Para começar a análise, escolha uma turma e uma tarefa existentes ou crie novas.
         </p>
@@ -265,9 +263,7 @@ export default function ClassTaskModal({
                       </option>
                     ))}
                   </select>
-                  {tasksError && (
-                    <p className="mt-2 text-xs text-[var(--rubric)]">{tasksError}</p>
-                  )}
+                  {tasksError && <p className="mt-2 text-xs text-[var(--rubric)]">{tasksError}</p>}
                 </div>
               )}
             </div>
@@ -275,11 +271,11 @@ export default function ClassTaskModal({
 
           {activeTab === 'create' && (
             <div className="space-y-4">
-            {!effectiveUserId && (
-              <div className="rounded-xl border border-[var(--fog)] bg-[var(--paper)] p-3 text-xs text-[var(--rubric)]">
-                Faça login para criar novas turmas e tarefas.
-              </div>
-            )}
+              {!effectiveUserId && (
+                <div className="rounded-xl border border-[var(--fog)] bg-[var(--paper)] p-3 text-xs text-[var(--rubric)]">
+                  Faça login para criar novas turmas e tarefas.
+                </div>
+              )}
               <div>
                 <label className="text-xs font-semibold text-[var(--graphite)]">
                   Nome da Turma

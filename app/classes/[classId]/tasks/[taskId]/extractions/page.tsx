@@ -361,15 +361,11 @@ export default function TaskExtractionsPage() {
             </p>
             <div className="mt-4 space-y-3 text-sm text-[var(--ink)]">
               <div className="rounded-xl border border-[var(--fog)] bg-[var(--paper)] p-3">
-                <p className="text-xs uppercase tracking-[0.2em] text-[var(--graphite)]">
-                  Turma
-                </p>
+                <p className="text-xs uppercase tracking-[0.2em] text-[var(--graphite)]">Turma</p>
                 <p className="mt-1 font-semibold">{classInfo?.name ?? 'Carregando...'}</p>
               </div>
               <div className="rounded-xl border border-[var(--fog)] bg-[var(--paper)] p-3">
-                <p className="text-xs uppercase tracking-[0.2em] text-[var(--graphite)]">
-                  Tarefa
-                </p>
+                <p className="text-xs uppercase tracking-[0.2em] text-[var(--graphite)]">Tarefa</p>
                 <p className="mt-1 font-semibold">{taskInfo?.title ?? 'Carregando...'}</p>
               </div>
               <div className="rounded-xl border border-[var(--fog)] bg-[var(--paper)] p-3">

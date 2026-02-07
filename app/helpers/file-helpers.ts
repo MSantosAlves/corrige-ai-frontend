@@ -1,9 +1,5 @@
 export const DEFAULT_VALID_EXTENSIONS = ['.pdf', '.png', '.jpeg', '.jpg', '.jpepg'];
-export const DEFAULT_VALID_MIME_TYPES = [
-  'application/pdf',
-  'image/png',
-  'image/jpeg',
-];
+export const DEFAULT_VALID_MIME_TYPES = ['application/pdf', 'image/png', 'image/jpeg'];
 
 export const fileToBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {

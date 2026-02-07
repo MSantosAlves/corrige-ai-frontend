@@ -158,9 +158,7 @@ export default function GradeCriteriaDetailPage() {
                   {criteria?.name || 'Detalhes do critério'}
                 </h1>
                 {criteria?.classification && (
-                  <p className="mt-2 text-sm text-[var(--graphite)]">
-                    {criteria.classification}
-                  </p>
+                  <p className="mt-2 text-sm text-[var(--graphite)]">{criteria.classification}</p>
                 )}
               </div>
               {criteria && (
@@ -200,7 +198,10 @@ export default function GradeCriteriaDetailPage() {
                     </p>
                     <ul className="mt-3 flex flex-col gap-3">
                       {criteria.items.map((item, index) => (
-                        <li key={`${item.label}-${index}`} className="rounded-xl border border-[var(--fog)] bg-[var(--paper)] p-3">
+                        <li
+                          key={`${item.label}-${index}`}
+                          className="rounded-xl border border-[var(--fog)] bg-[var(--paper)] p-3"
+                        >
                           <div className="flex items-center justify-between gap-3">
                             <span className="text-sm font-semibold text-[var(--ink)]">
                               {item.label}

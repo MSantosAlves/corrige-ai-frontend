@@ -3,6 +3,9 @@ import { apiClient } from './api-client';
 export type BulkExtractionResponse = {
   batch_id?: string;
   progress?: { completed?: number; total?: number };
+  error?: string;
+  planQuota?: number;
+  planUsage?: number;
 };
 
 export const extractText = async (formData: FormData): Promise<Record<string, unknown>> => {
@@ -32,7 +35,11 @@ export const extractTextBulk = async (formData: FormData): Promise<BulkExtractio
     throw new Error(message);
   }
 
-  return (await response.json()) as BulkExtractionResponse;
+  const payload = (await response.json()) as BulkExtractionResponse;
+  if (payload.error) {
+    throw new Error(payload.error);
+  }
+  return payload;
 };
 
 export const getExtraction = async (extractionId: string) => {

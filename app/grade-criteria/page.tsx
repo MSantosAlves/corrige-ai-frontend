@@ -3,11 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppHeader } from '../components/layout/AppHeader';
-import { CreateCriteriaModal } from '../components/criteria/CreateCriteriaModal';
 import { useAuthFlow } from '../hooks/use-auth-flow';
 import { useAuthSession } from '../hooks/use-auth-session';
 import { useClickOutside } from '../hooks/use-click-outside';
-import { createCriteria, listCriteria, type GradeCriteria } from '../services/criteria-service';
+import { listCriteria, type GradeCriteria } from '../services/criteria-service';
 
 type FilterMode = 'mine' | 'all';
 
@@ -37,8 +36,6 @@ export default function GradeCriteriaPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [filterMode, setFilterMode] = useState<FilterMode>('mine');
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-
   const [userId, setUserId] = useState<string | null>(null);
 
   useClickOutside(loginMenuRef, isLoginMenuOpen, () => setIsLoginMenuOpen(false));
@@ -139,7 +136,7 @@ export default function GradeCriteriaPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setIsCreateModalOpen(true)}
+                onClick={() => router.push('/grade-criteria/create')}
                 className="rounded-lg bg-[var(--chalk)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-[var(--chalk-strong)]"
               >
                 Criar critério
@@ -224,14 +221,6 @@ export default function GradeCriteriaPage() {
         </section>
       </div>
 
-      <CreateCriteriaModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSubmit={async (payload) => {
-          const created = await createCriteria(payload);
-          setItems((prev) => [created, ...prev]);
-        }}
-      />
     </main>
   );
 }

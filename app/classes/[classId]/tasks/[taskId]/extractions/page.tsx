@@ -239,7 +239,7 @@ export default function TaskExtractionsPage() {
               </div>
             </div>
 
-            <div className="mt-6 overflow-hidden rounded-2xl border border-[var(--fog)] bg-white">
+            <div className="mt-6 rounded-2xl border border-[var(--fog)] bg-white">
               <table className="w-full border-collapse text-left text-sm">
                 <thead className="bg-[var(--paper)] text-xs uppercase tracking-[0.2em] text-[var(--graphite)]">
                   <tr>

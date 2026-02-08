@@ -9,6 +9,7 @@
 - Always use the services layer for API calls
 
 # Code guidelines
+
 - Always use TypeScript.
 - Naming conventions:
   - Constants and environment variables should always be uppercase (ex.: API_URL).
@@ -22,14 +23,14 @@
 ├── AGENTS.md
 ├── CLAUDE.md -> AGENTS.md
 ├── app
-│   │   └── page.tsx
-│   ├── components
-│   ├── globals.css
-│   ├── helpers
-│   ├── hooks
-│   ├── layout.tsx
-│   ├── page.tsx
-│   └── services
+│ │ └── page.tsx
+│ ├── components
+│ ├── globals.css
+│ ├── helpers
+│ ├── hooks
+│ ├── layout.tsx
+│ ├── page.tsx
+│ └── services
 ├── eslint.config.cjs
 ├── next-env.d.ts
 ├── next.config.js

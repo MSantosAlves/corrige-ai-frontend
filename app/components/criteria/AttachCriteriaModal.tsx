@@ -37,9 +37,7 @@ export const AttachCriteriaModal = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6">
       <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
         <h2 className="text-lg font-semibold text-gray-900">Atribuir critério</h2>
-        <p className="mt-1 text-sm text-gray-600">
-          Selecione um critério criado por você.
-        </p>
+        <p className="mt-1 text-sm text-gray-600">Selecione um critério criado por você.</p>
 
         <div className="mt-4">
           <label className="text-xs font-semibold text-gray-600">Critério</label>

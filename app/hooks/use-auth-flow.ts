@@ -1,13 +1,18 @@
 import { useState } from 'react';
 
 import { signInOrUp } from '../services/auth-service';
+import { persistPlanUsage, type PlanUsage } from '../helpers/plan-usage';
 import { type AuthUser } from './use-auth-session';
 
-export const useAuthFlow = (setAuthUser: (user: AuthUser) => void) => {
+export const useAuthFlow = (
+  setAuthUser: (user: AuthUser) => void,
+  onPlanUsageUpdate?: (payload: PlanUsage) => void,
+) => {
   const [authMode, setAuthMode] = useState<'sign-in' | 'sign-up'>('sign-in');
   const [authName, setAuthName] = useState('');
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
+  const [authSignUpKey, setAuthSignUpKey] = useState('');
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
 
@@ -21,7 +26,15 @@ export const useAuthFlow = (setAuthUser: (user: AuthUser) => void) => {
         name: authName.trim(),
         email: authEmail.trim(),
         password: authPassword,
+        signUpKey: authSignUpKey.trim(),
       });
+      const updatedPlanUsage = persistPlanUsage({
+        planQuota: payload.user?.planQuota,
+        planUsage: payload.user?.planUsage,
+      });
+      if (updatedPlanUsage) {
+        onPlanUsageUpdate?.(updatedPlanUsage);
+      }
       const userName = payload.user?.name || 'Usuario';
       const userId = payload.user?.id || 'user_unknown';
       setAuthUser({ id: userId, name: userName });
@@ -50,6 +63,8 @@ export const useAuthFlow = (setAuthUser: (user: AuthUser) => void) => {
     setAuthEmail,
     authPassword,
     setAuthPassword,
+    authSignUpKey,
+    setAuthSignUpKey,
     authError,
     authLoading,
     handleAuth,

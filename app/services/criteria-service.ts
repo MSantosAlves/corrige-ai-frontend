@@ -20,10 +20,12 @@ export type GradeCriteria = {
   updated_at: string;
 };
 
-export const listCriteria = async (params: {
-  includePublic?: boolean;
-  classification?: string;
-} = {}) => {
+export const listCriteria = async (
+  params: {
+    includePublic?: boolean;
+    classification?: string;
+  } = {},
+) => {
   const searchParams = new URLSearchParams();
   if (params.classification) {
     searchParams.set('classification', params.classification);
@@ -32,10 +34,9 @@ export const listCriteria = async (params: {
     searchParams.set('include_public', String(params.includePublic));
   }
   const query = searchParams.toString();
-  const response = await fetch(
-    `${apiClient.baseUrl}/criteria${query ? `?${query}` : ''}`,
-    { headers: apiClient.authHeaders() },
-  );
+  const response = await fetch(`${apiClient.baseUrl}/criteria${query ? `?${query}` : ''}`, {
+    headers: apiClient.authHeaders(),
+  });
 
   if (!response.ok) {
     const message = await apiClient.parseErrorMessage(response, 'Falha ao carregar critérios.');

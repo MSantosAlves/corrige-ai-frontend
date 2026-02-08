@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { listClasses } from '../../../services/classes-service';
 import { AttachCriteriaModal } from '../../../components/criteria/AttachCriteriaModal';
 import {
@@ -9,8 +9,11 @@ import {
   listCriteria,
   type GradeCriteria,
 } from '../../../services/criteria-service';
-import { listExtractionsByTask } from '../../../services/extractions-service';
 import { createTask, listTasks } from '../../../services/tasks-service';
+import { AppHeader } from '../../../components/layout/AppHeader';
+import { useAuthFlow } from '../../../hooks/use-auth-flow';
+import { useAuthSession } from '../../../hooks/use-auth-session';
+import { useClickOutside } from '../../../hooks/use-click-outside';
 
 type Task = {
   id: string;
@@ -30,20 +33,30 @@ type ClassItem = {
   user_id: string;
 };
 
-type TaskExtraction = {
-  id: string;
-  task_id: string;
-  ocr_extraction_result: Record<string, unknown>;
-  analysis_result: string;
-  filename: string;
-  created_at: string;
-  updated_at: string;
-};
-
 export default function TasksPage() {
   const router = useRouter();
   const params = useParams();
   const classId = params?.classId as string;
+  const { authUser, setAuthUser } = useAuthSession();
+  const {
+    authMode,
+    setAuthMode,
+    authName,
+    setAuthName,
+    authEmail,
+    setAuthEmail,
+    authPassword,
+    setAuthPassword,
+    authSignUpKey,
+    setAuthSignUpKey,
+    authError,
+    authLoading,
+    handleAuth,
+  } = useAuthFlow(setAuthUser);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isLoginMenuOpen, setIsLoginMenuOpen] = useState(false);
+  const loginMenuRef = useRef<HTMLDivElement | null>(null);
+  const userMenuRef = useRef<HTMLDivElement | null>(null);
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [classInfo, setClassInfo] = useState<ClassItem | null>(null);
@@ -62,11 +75,8 @@ export default function TasksPage() {
   const [criteriaTask, setCriteriaTask] = useState<Task | null>(null);
   const [isAttachingCriteria, setIsAttachingCriteria] = useState(false);
 
-  // Analysis view states
-  const [selectedTaskForAnalysis, setSelectedTaskForAnalysis] = useState<Task | null>(null);
-  const [extractions, setExtractions] = useState<TaskExtraction[]>([]);
-  const [isLoadingExtractions, setIsLoadingExtractions] = useState(false);
-  const [extractionsError, setExtractionsError] = useState('');
+  useClickOutside(loginMenuRef, isLoginMenuOpen, () => setIsLoginMenuOpen(false));
+  useClickOutside(userMenuRef, isUserMenuOpen, () => setIsUserMenuOpen(false));
 
   useEffect(() => {
     if (!classId) {
@@ -152,22 +162,8 @@ export default function TasksPage() {
     }
   };
 
-  const handleTaskClick = async (task: Task) => {
-    setSelectedTaskForAnalysis(task);
-    setIsLoadingExtractions(true);
-    setExtractionsError('');
-    setExtractions([]);
-
-    try {
-      const payload = (await listExtractionsByTask(task.id)) as { items?: TaskExtraction[] };
-      setExtractions(payload.items ?? []);
-    } catch (fetchError) {
-      const message =
-        fetchError instanceof Error ? fetchError.message : 'Erro inesperado ao carregar análises.';
-      setExtractionsError(message);
-    } finally {
-      setIsLoadingExtractions(false);
-    }
+  const handleTaskClick = (task: Task) => {
+    router.push(`/classes/${classId}/tasks/${task.id}/extractions`);
   };
 
   const loadUserCriteria = async () => {
@@ -179,7 +175,7 @@ export default function TasksPage() {
       const items =
         userId && payload.items
           ? payload.items.filter((item) => item.user_id === userId)
-          : payload.items ?? [];
+          : (payload.items ?? []);
       setCriteriaOptions(items);
       setCriteriaMap(
         items.reduce<Record<string, string>>((acc, item) => {
@@ -227,9 +223,7 @@ export default function TasksPage() {
       setIsCriteriaModalOpen(false);
     } catch (attachError) {
       const message =
-        attachError instanceof Error
-          ? attachError.message
-          : 'Erro ao atribuir critério.';
+        attachError instanceof Error ? attachError.message : 'Erro ao atribuir critério.';
       setCriteriaError(message);
     } finally {
       setIsAttachingCriteria(false);
@@ -237,111 +231,176 @@ export default function TasksPage() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-white px-6 py-12">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-        <header className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
+    <main className="teched-main relative min-h-screen bg-[var(--paper)] px-0 pb-12 pt-8 text-[var(--ink)]">
+      <AppHeader
+        authUser={authUser}
+        isUserMenuOpen={isUserMenuOpen}
+        setIsUserMenuOpen={setIsUserMenuOpen}
+        isLoginMenuOpen={isLoginMenuOpen}
+        setIsLoginMenuOpen={setIsLoginMenuOpen}
+        authMode={authMode}
+        setAuthMode={setAuthMode}
+        authName={authName}
+        setAuthName={setAuthName}
+        authEmail={authEmail}
+        setAuthEmail={setAuthEmail}
+        authPassword={authPassword}
+        setAuthPassword={setAuthPassword}
+        authSignUpKey={authSignUpKey}
+        setAuthSignUpKey={setAuthSignUpKey}
+        authLoading={authLoading}
+        authError={authError}
+        onSubmitAuth={async (mode) => {
+          const ok = await handleAuth(mode);
+          if (ok) {
+            setIsLoginMenuOpen(false);
+          }
+        }}
+        onSignOut={() => {
+          setAuthUser(null);
+          localStorage.removeItem('sessionToken');
+          localStorage.removeItem('sessionUserName');
+          localStorage.removeItem('sessionUserId');
+        }}
+        onNavigateClasses={() => {
+          router.push('/classes');
+        }}
+        onNavigateCriteria={() => {
+          router.push('/grade-criteria');
+        }}
+        loginMenuRef={loginMenuRef}
+        userMenuRef={userMenuRef}
+      />
+
+      <div className="mx-auto flex w-full max-w-none flex-col gap-8 px-0 pt-20">
+        <section className="px-6">
           <button
             type="button"
             onClick={() => router.back()}
-            className="mb-3 text-sm font-semibold text-blue-600 hover:text-blue-700"
+            className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--chalk)]"
           >
             ← Voltar
           </button>
-          <p className="text-xs font-semibold uppercase tracking-wider text-blue-700">Tarefas</p>
-          <h1 className="mt-2 text-2xl font-semibold text-gray-900">
-            {classInfo?.name ? `Tarefas de ${classInfo.name}` : 'Minhas tarefas'}
-          </h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Gerencie as tarefas da turma e acompanhe o progresso.
-          </p>
-        </header>
+        </section>
 
-        <section className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
-          {isLoading ? (
-            <p className="text-sm text-gray-500">Carregando tarefas...</p>
-          ) : tasks.length === 0 ? (
-            <div className="flex flex-col items-start gap-4">
-              <p className="text-sm text-gray-600">Não há tarefas cadastradas.</p>
+        <section className="px-6">
+          <div className="rounded-2xl border border-[var(--fog)] bg-[var(--paper-soft)] p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--chalk)]">
+                  Tarefas
+                </p>
+                <h1 className="mt-2 text-2xl font-semibold text-[var(--ink)]">
+                  {classInfo?.name ? `Tarefas de ${classInfo.name}` : 'Minhas tarefas'}
+                </h1>
+                <p className="mt-1 text-sm text-[var(--graphite)]">
+                  Gerencie as tarefas da turma e acompanhe o progresso.
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(true)}
-                className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+                className="rounded-lg bg-[var(--chalk)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-[var(--chalk-strong)]"
               >
                 Criar tarefa
               </button>
             </div>
-          ) : (
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-600">{tasks.length} tarefa(s) cadastrada(s)</p>
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(true)}
-                  className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
-                >
-                  Criar tarefa
-                </button>
-              </div>
-              <ul className="flex flex-col gap-3">
-                {tasks.map((task) => (
-                  <li
-                    key={task.id}
-                    onClick={() => handleTaskClick(task)}
-                    className="cursor-pointer rounded-xl border border-blue-100 bg-blue-50/60 p-4 transition hover:border-blue-200 hover:bg-blue-100"
-                  >
-                    <div className="flex flex-col gap-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex flex-col gap-2">
-                          <h3 className="text-sm font-semibold text-gray-800">{task.title}</h3>
+
+            <div className="mt-6 overflow-hidden rounded-2xl border border-[var(--fog)] bg-white">
+              <table className="w-full border-collapse text-left text-sm">
+                <thead className="bg-[var(--paper)] text-xs uppercase tracking-[0.2em] text-[var(--graphite)]">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold">Tarefa</th>
+                    <th className="px-4 py-3 font-semibold">Prazo</th>
+                    <th className="px-4 py-3 font-semibold">Critério</th>
+                    <th className="px-4 py-3 text-right font-semibold">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="text-[var(--ink)]">
+                  {isLoading && (
+                    <tr>
+                      <td className="px-4 py-4 text-[var(--graphite)]" colSpan={4}>
+                        Carregando tarefas...
+                      </td>
+                    </tr>
+                  )}
+                  {!isLoading && error && (
+                    <tr>
+                      <td className="px-4 py-4 text-[var(--rubric)]" colSpan={4}>
+                        {error}
+                      </td>
+                    </tr>
+                  )}
+                  {!isLoading && !error && tasks.length === 0 && (
+                    <tr>
+                      <td className="px-4 py-4 text-[var(--graphite)]" colSpan={4}>
+                        Não há tarefas cadastradas.
+                      </td>
+                    </tr>
+                  )}
+                  {!isLoading &&
+                    !error &&
+                    tasks.map((task) => (
+                      <tr key={task.id} className="border-t border-[var(--fog)]">
+                        <td className="px-4 py-4">
+                          <p className="font-semibold">{task.title}</p>
                           {task.description && (
-                            <p className="text-xs text-gray-600">{task.description}</p>
-                          )}
-                          {task.due_date && (
-                            <p className="text-xs text-gray-500">
-                              Prazo: {formatDate(task.due_date)}
+                            <p className="mt-1 text-xs text-[var(--graphite)]">
+                              {task.description}
                             </p>
                           )}
-                        </div>
-                        {task.grade_criteria_id ? (
+                        </td>
+                        <td className="px-4 py-4 text-[var(--graphite)]">
+                          {task.due_date ? formatDate(task.due_date) : '—'}
+                        </td>
+                        <td className="px-4 py-4">
+                          {task.grade_criteria_id ? (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                openCriteriaModal(task);
+                              }}
+                              className="rounded-full border border-[var(--fog)] bg-[var(--paper)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--chalk)] hover:border-[var(--chalk)]"
+                            >
+                              {criteriaMap[task.grade_criteria_id] || 'Critério anexado'}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                openCriteriaModal(task);
+                              }}
+                              className="rounded-full border border-[var(--fog)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--graphite)] hover:border-[var(--chalk)] hover:text-[var(--chalk)]"
+                            >
+                              Atribuir critério
+                            </button>
+                          )}
+                        </td>
+                        <td className="px-4 py-4 text-right">
                           <button
                             type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              openCriteriaModal(task);
-                            }}
-                            className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-200"
+                            onClick={() => handleTaskClick(task)}
+                            className="rounded-lg border border-[var(--fog)] bg-[var(--paper)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--chalk)] transition hover:border-[var(--chalk)]"
                           >
-                            {criteriaMap[task.grade_criteria_id] || 'Critério anexado'}
+                            Ver uploads
                           </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              openCriteriaModal(task);
-                            }}
-                            className="rounded-full border border-blue-200 px-3 py-1 text-xs font-semibold text-blue-700 hover:border-blue-300"
-                          >
-                            Atribuir critério
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
             </div>
-          )}
-
-          {error && <p className="mt-4 text-sm text-red-500">{error}</p>}
+          </div>
         </section>
       </div>
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-semibold text-gray-900">Criar nova tarefa</h2>
-            <p className="mt-1 text-sm text-gray-600">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6">
+            <h2 className="text-lg font-semibold text-[var(--ink)]">Criar nova tarefa</h2>
+            <p className="mt-1 text-sm text-[var(--graphite)]">
               Informe os detalhes da tarefa para continuar.
             </p>
             <div className="mt-4 flex flex-col gap-3">
@@ -350,13 +409,13 @@ export default function TasksPage() {
                 value={newTaskTitle}
                 onChange={(event) => setNewTaskTitle(event.target.value)}
                 placeholder="Título da tarefa"
-                className="w-full rounded-xl border border-blue-200 px-4 py-2.5 text-sm text-gray-700 outline-none transition focus:border-blue-400"
+                className="w-full rounded-xl border border-[var(--fog)] px-4 py-2.5 text-sm text-[var(--ink)] outline-none transition focus:border-[var(--chalk)]"
               />
               <textarea
                 value={newTaskDescription}
                 onChange={(event) => setNewTaskDescription(event.target.value)}
                 placeholder="Descrição (opcional)"
-                className="w-full rounded-xl border border-blue-200 px-4 py-2.5 text-sm text-gray-700 outline-none transition focus:border-blue-400"
+                className="w-full rounded-xl border border-[var(--fog)] px-4 py-2.5 text-sm text-[var(--ink)] outline-none transition focus:border-[var(--chalk)]"
                 rows={3}
               />
             </div>
@@ -364,7 +423,7 @@ export default function TasksPage() {
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="rounded-full border border-blue-100 px-4 py-2 text-sm font-semibold text-gray-600"
+                className="rounded-lg border border-[var(--fog)] px-4 py-2 text-sm font-semibold text-[var(--graphite)] hover:bg-[var(--wash)]"
               >
                 Cancelar
               </button>
@@ -372,82 +431,11 @@ export default function TasksPage() {
                 type="button"
                 disabled={isSubmitting || !newTaskTitle.trim()}
                 onClick={handleCreateTask}
-                className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+                className="rounded-lg bg-[var(--chalk)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--chalk-strong)] disabled:cursor-not-allowed disabled:bg-[var(--fog)]"
               >
                 {isSubmitting ? 'Criando...' : 'Criar tarefa'}
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {selectedTaskForAnalysis && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6">
-          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">
-                Análises de "{selectedTaskForAnalysis.title}"
-              </h2>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedTaskForAnalysis(null);
-                  setExtractions([]);
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                ✕
-              </button>
-            </div>
-
-            {isLoadingExtractions ? (
-              <p className="text-sm text-gray-500">Carregando análises...</p>
-            ) : extractionsError ? (
-              <p className="text-sm text-red-500">{extractionsError}</p>
-            ) : extractions.length === 0 ? (
-              <p className="text-sm text-gray-600">Nenhuma análise realizada nesta tarefa.</p>
-            ) : (
-              <div className="space-y-4">
-                {extractions.map((extraction) => (
-                  <div
-                    key={extraction.id}
-                    className="rounded-xl border border-blue-100 bg-blue-50/60 p-4"
-                  >
-                    <div className="flex items-start justify-between gap-2 mb-3">
-                      <div>
-                        <p className="text-sm font-semibold text-gray-800">{extraction.filename}</p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {formatDate(extraction.created_at)}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          router.push(
-                            `/classes/${classId}/tasks/${selectedTaskForAnalysis.id}/extraction/${extraction.id}`,
-                          );
-                          setSelectedTaskForAnalysis(null);
-                        }}
-                        className="rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white hover:bg-blue-700 transition whitespace-nowrap"
-                      >
-                        Ir para detalhes
-                      </button>
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="rounded-lg border border-blue-100 bg-white p-3">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                          Análise
-                        </p>
-                        <p className="mt-2 text-sm text-gray-700 whitespace-pre-line line-clamp-3">
-                          {extraction.analysis_result || 'Sem análise disponível'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       )}

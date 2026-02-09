@@ -12,11 +12,16 @@ export const extractText = async (formData: FormData): Promise<Record<string, un
   const response = await fetch(`${apiClient.baseUrl}/extract-text`, {
     method: 'POST',
     headers: apiClient.authHeaders(),
+    ...apiClient.authOptions(),
     body: formData,
   });
 
   if (!response.ok) {
-    const message = await apiClient.parseErrorMessage(response, 'Falha ao extrair o texto.');
+    const { message, type } = await apiClient.parseErrorMessage(
+      response,
+      'Falha ao extrair o texto.',
+    );
+    apiClient.redirectIfEmailNotVerified(type);
     throw new Error(message);
   }
 
@@ -27,11 +32,16 @@ export const extractTextBulk = async (formData: FormData): Promise<BulkExtractio
   const response = await fetch(`${apiClient.baseUrl}/extractions/bulk`, {
     method: 'POST',
     headers: apiClient.authHeaders(),
+    ...apiClient.authOptions(),
     body: formData,
   });
 
   if (!response.ok) {
-    const message = await apiClient.parseErrorMessage(response, 'Falha ao enviar os arquivos.');
+    const { message, type } = await apiClient.parseErrorMessage(
+      response,
+      'Falha ao enviar os arquivos.',
+    );
+    apiClient.redirectIfEmailNotVerified(type);
     throw new Error(message);
   }
 
@@ -45,11 +55,15 @@ export const extractTextBulk = async (formData: FormData): Promise<BulkExtractio
 export const getExtraction = async (extractionId: string) => {
   const response = await fetch(
     `${apiClient.baseUrl}/extractions/${encodeURIComponent(extractionId)}`,
-    { headers: apiClient.authHeaders() },
+    { headers: apiClient.authHeaders(), ...apiClient.authOptions() },
   );
 
   if (!response.ok) {
-    const message = await apiClient.parseErrorMessage(response, 'Falha ao carregar análise.');
+    const { message, type } = await apiClient.parseErrorMessage(
+      response,
+      'Falha ao carregar análise.',
+    );
+    apiClient.redirectIfEmailNotVerified(type);
     throw new Error(message);
   }
 
@@ -59,11 +73,15 @@ export const getExtraction = async (extractionId: string) => {
 export const listExtractionsByTask = async (taskId: string) => {
   const response = await fetch(
     `${apiClient.baseUrl}/extractions?task_id=${encodeURIComponent(taskId)}`,
-    { headers: apiClient.authHeaders() },
+    { headers: apiClient.authHeaders(), ...apiClient.authOptions() },
   );
 
   if (!response.ok) {
-    const message = await apiClient.parseErrorMessage(response, 'Falha ao carregar análises.');
+    const { message, type } = await apiClient.parseErrorMessage(
+      response,
+      'Falha ao carregar análises.',
+    );
+    apiClient.redirectIfEmailNotVerified(type);
     throw new Error(message);
   }
 
@@ -72,9 +90,5 @@ export const listExtractionsByTask = async (taskId: string) => {
 
 export const startBulkExtractionStream = (batchId: string): EventSource => {
   const streamUrl = new URL(`${apiClient.baseUrl}/extractions/bulk/${batchId}/events`);
-  const token = localStorage.getItem('sessionToken');
-  if (token) {
-    streamUrl.searchParams.set('token', token);
-  }
-  return new EventSource(streamUrl.toString());
+  return new EventSource(streamUrl.toString(), { withCredentials: true });
 };

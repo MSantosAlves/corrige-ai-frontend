@@ -99,7 +99,10 @@ export const CriteriaForm = ({
         </div>
         <div className="mt-3 flex flex-col gap-3">
           {form.items.map((item, index) => (
-            <div key={item.tempId} className="rounded-xl border border-[var(--fog)] bg-[var(--paper)] p-4">
+            <div
+              key={item.tempId}
+              className="rounded-xl border border-[var(--fog)] bg-[var(--paper)] p-4"
+            >
               <div className="grid gap-3 md:grid-cols-[1fr_140px]">
                 <input
                   type="text"

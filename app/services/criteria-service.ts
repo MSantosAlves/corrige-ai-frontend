@@ -36,10 +36,15 @@ export const listCriteria = async (
   const query = searchParams.toString();
   const response = await fetch(`${apiClient.baseUrl}/criteria${query ? `?${query}` : ''}`, {
     headers: apiClient.authHeaders(),
+    ...apiClient.authOptions(),
   });
 
   if (!response.ok) {
-    const message = await apiClient.parseErrorMessage(response, 'Falha ao carregar critérios.');
+    const { message, type } = await apiClient.parseErrorMessage(
+      response,
+      'Falha ao carregar critérios.',
+    );
+    apiClient.redirectIfEmailNotVerified(type);
     throw new Error(message);
   }
 
@@ -49,10 +54,15 @@ export const listCriteria = async (
 export const getCriteriaById = async (criteriaId: string) => {
   const response = await fetch(`${apiClient.baseUrl}/criteria`, {
     headers: apiClient.authHeaders(),
+    ...apiClient.authOptions(),
   });
 
   if (!response.ok) {
-    const message = await apiClient.parseErrorMessage(response, 'Falha ao carregar critério.');
+    const { message, type } = await apiClient.parseErrorMessage(
+      response,
+      'Falha ao carregar critério.',
+    );
+    apiClient.redirectIfEmailNotVerified(type);
     throw new Error(message);
   }
 
@@ -79,6 +89,7 @@ export const createCriteria = async (data: {
       ...apiClient.authHeaders(),
       'content-type': 'application/json',
     },
+    ...apiClient.authOptions(),
     body: JSON.stringify({
       name: data.name,
       description: data.description,
@@ -91,7 +102,11 @@ export const createCriteria = async (data: {
   });
 
   if (!response.ok) {
-    const message = await apiClient.parseErrorMessage(response, 'Falha ao criar critério.');
+    const { message, type } = await apiClient.parseErrorMessage(
+      response,
+      'Falha ao criar critério.',
+    );
+    apiClient.redirectIfEmailNotVerified(type);
     throw new Error(message);
   }
 
@@ -109,6 +124,7 @@ export const attachCriteriaToTask = async (data: {
       ...apiClient.authHeaders(),
       'content-type': 'application/json',
     },
+    ...apiClient.authOptions(),
     body: JSON.stringify({
       grade_criteria_id: data.gradeCriteriaId,
       classification: data.classification,
@@ -116,10 +132,11 @@ export const attachCriteriaToTask = async (data: {
   });
 
   if (!response.ok) {
-    const message = await apiClient.parseErrorMessage(
+    const { message, type } = await apiClient.parseErrorMessage(
       response,
       'Falha ao anexar critério à tarefa.',
     );
+    apiClient.redirectIfEmailNotVerified(type);
     throw new Error(message);
   }
 

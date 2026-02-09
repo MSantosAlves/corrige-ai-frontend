@@ -13,7 +13,7 @@ export const useExtractionFlow = (params: {
   authUser: AuthUser;
   selectedClassId: string | null;
   selectedTaskId: string | null;
-  setIsLoginMenuOpen: (value: boolean) => void;
+  onRequireAuth: () => void;
   setIsClassTaskModalOpen: (value: boolean) => void;
   startBulkStream: (batchId: string) => void;
   setBulkTotal: (value: number) => void;
@@ -31,7 +31,7 @@ export const useExtractionFlow = (params: {
     authUser,
     selectedClassId,
     selectedTaskId,
-    setIsLoginMenuOpen,
+    onRequireAuth,
     setIsClassTaskModalOpen,
     startBulkStream,
     setBulkTotal,
@@ -64,7 +64,7 @@ export const useExtractionFlow = (params: {
       }
       manualStartRef.current = false;
       if (!authUser) {
-        setIsLoginMenuOpen(true);
+        onRequireAuth();
         return;
       }
 

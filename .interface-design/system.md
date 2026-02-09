@@ -1,18 +1,22 @@
 # Interface Design System
 
 Direction and feel
+
 - TechED grading workbench
 - Subtle paper surfaces with chalk accents
 - Uppercased microcopy for labels and metadata
 - Calm, structured hierarchy built around tables and form cards
 
 Depth strategy
+
 - Borders-only with soft surface layering
 
 Spacing base unit
+
 - 4px
 
 Key component patterns
+
 - Header: AppHeader with centered logo and right-aligned profile menu
 - Cards: rounded-2xl, border var(--fog), surface var(--paper-soft)
 - Primary action: chalk green background, uppercase label

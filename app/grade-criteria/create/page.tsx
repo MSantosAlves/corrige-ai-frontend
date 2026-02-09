@@ -4,43 +4,29 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppHeader } from '../../components/layout/AppHeader';
 import { CriteriaForm } from '../../components/criteria/CriteriaForm';
-import { useAuthFlow } from '../../hooks/use-auth-flow';
 import { useAuthSession } from '../../hooks/use-auth-session';
 import { useClickOutside } from '../../hooks/use-click-outside';
 import { useCriteriaForm } from '../../hooks/use-criteria-form';
 import { createCriteria } from '../../services/criteria-service';
+import { signOut } from '../../services/auth-client';
 
 export default function CreateGradeCriteriaPage() {
   const router = useRouter();
   const { authUser, setAuthUser } = useAuthSession();
-  const {
-    authMode,
-    setAuthMode,
-    authName,
-    setAuthName,
-    authEmail,
-    setAuthEmail,
-    authPassword,
-    setAuthPassword,
-    authSignUpKey,
-    setAuthSignUpKey,
-    authError,
-    authLoading,
-    handleAuth,
-  } = useAuthFlow(setAuthUser);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isLoginMenuOpen, setIsLoginMenuOpen] = useState(false);
-  const loginMenuRef = useRef<HTMLDivElement | null>(null);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
   const form = useCriteriaForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  useClickOutside(loginMenuRef, isLoginMenuOpen, () => setIsLoginMenuOpen(false));
   useClickOutside(userMenuRef, isUserMenuOpen, () => setIsUserMenuOpen(false));
 
   const handleSubmit = async () => {
     if (!form.isValid) {
+      return;
+    }
+    if (!authUser) {
+      router.push('/auth');
       return;
     }
 
@@ -65,31 +51,12 @@ export default function CreateGradeCriteriaPage() {
         authUser={authUser}
         isUserMenuOpen={isUserMenuOpen}
         setIsUserMenuOpen={setIsUserMenuOpen}
-        isLoginMenuOpen={isLoginMenuOpen}
-        setIsLoginMenuOpen={setIsLoginMenuOpen}
-        authMode={authMode}
-        setAuthMode={setAuthMode}
-        authName={authName}
-        setAuthName={setAuthName}
-        authEmail={authEmail}
-        setAuthEmail={setAuthEmail}
-        authPassword={authPassword}
-        setAuthPassword={setAuthPassword}
-        authSignUpKey={authSignUpKey}
-        setAuthSignUpKey={setAuthSignUpKey}
-        authLoading={authLoading}
-        authError={authError}
-        onSubmitAuth={async (mode) => {
-          const ok = await handleAuth(mode);
-          if (ok) {
-            setIsLoginMenuOpen(false);
-          }
+        onOpenAuth={() => {
+          router.push('/auth');
         }}
         onSignOut={() => {
+          void signOut();
           setAuthUser(null);
-          localStorage.removeItem('sessionToken');
-          localStorage.removeItem('sessionUserName');
-          localStorage.removeItem('sessionUserId');
         }}
         onNavigateClasses={() => {
           router.push('/classes');
@@ -97,7 +64,6 @@ export default function CreateGradeCriteriaPage() {
         onNavigateCriteria={() => {
           router.push('/grade-criteria');
         }}
-        loginMenuRef={loginMenuRef}
         userMenuRef={userMenuRef}
       />
 

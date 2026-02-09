@@ -11,9 +11,9 @@ import {
 } from '../../../services/criteria-service';
 import { createTask, listTasks } from '../../../services/tasks-service';
 import { AppHeader } from '../../../components/layout/AppHeader';
-import { useAuthFlow } from '../../../hooks/use-auth-flow';
 import { useAuthSession } from '../../../hooks/use-auth-session';
 import { useClickOutside } from '../../../hooks/use-click-outside';
+import { signOut } from '../../../services/auth-client';
 
 type Task = {
   id: string;
@@ -38,24 +38,7 @@ export default function TasksPage() {
   const params = useParams();
   const classId = params?.classId as string;
   const { authUser, setAuthUser } = useAuthSession();
-  const {
-    authMode,
-    setAuthMode,
-    authName,
-    setAuthName,
-    authEmail,
-    setAuthEmail,
-    authPassword,
-    setAuthPassword,
-    authSignUpKey,
-    setAuthSignUpKey,
-    authError,
-    authLoading,
-    handleAuth,
-  } = useAuthFlow(setAuthUser);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isLoginMenuOpen, setIsLoginMenuOpen] = useState(false);
-  const loginMenuRef = useRef<HTMLDivElement | null>(null);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
 
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -75,7 +58,6 @@ export default function TasksPage() {
   const [criteriaTask, setCriteriaTask] = useState<Task | null>(null);
   const [isAttachingCriteria, setIsAttachingCriteria] = useState(false);
 
-  useClickOutside(loginMenuRef, isLoginMenuOpen, () => setIsLoginMenuOpen(false));
   useClickOutside(userMenuRef, isUserMenuOpen, () => setIsUserMenuOpen(false));
 
   useEffect(() => {
@@ -85,7 +67,7 @@ export default function TasksPage() {
 
     const fetchClassInfo = async () => {
       try {
-        const userId = localStorage.getItem('sessionUserId');
+        const userId = authUser?.id;
         if (!userId) {
           return;
         }
@@ -100,7 +82,7 @@ export default function TasksPage() {
     };
 
     fetchClassInfo();
-  }, [classId]);
+  }, [authUser?.id, classId]);
 
   useEffect(() => {
     if (!classId) {
@@ -170,7 +152,7 @@ export default function TasksPage() {
     try {
       setCriteriaLoading(true);
       setCriteriaError('');
-      const userId = localStorage.getItem('sessionUserId');
+      const userId = authUser?.id;
       const payload = await listCriteria({ includePublic: false });
       const items =
         userId && payload.items
@@ -236,31 +218,12 @@ export default function TasksPage() {
         authUser={authUser}
         isUserMenuOpen={isUserMenuOpen}
         setIsUserMenuOpen={setIsUserMenuOpen}
-        isLoginMenuOpen={isLoginMenuOpen}
-        setIsLoginMenuOpen={setIsLoginMenuOpen}
-        authMode={authMode}
-        setAuthMode={setAuthMode}
-        authName={authName}
-        setAuthName={setAuthName}
-        authEmail={authEmail}
-        setAuthEmail={setAuthEmail}
-        authPassword={authPassword}
-        setAuthPassword={setAuthPassword}
-        authSignUpKey={authSignUpKey}
-        setAuthSignUpKey={setAuthSignUpKey}
-        authLoading={authLoading}
-        authError={authError}
-        onSubmitAuth={async (mode) => {
-          const ok = await handleAuth(mode);
-          if (ok) {
-            setIsLoginMenuOpen(false);
-          }
+        onOpenAuth={() => {
+          router.push('/auth');
         }}
         onSignOut={() => {
+          void signOut();
           setAuthUser(null);
-          localStorage.removeItem('sessionToken');
-          localStorage.removeItem('sessionUserName');
-          localStorage.removeItem('sessionUserId');
         }}
         onNavigateClasses={() => {
           router.push('/classes');
@@ -268,7 +231,6 @@ export default function TasksPage() {
         onNavigateCriteria={() => {
           router.push('/grade-criteria');
         }}
-        loginMenuRef={loginMenuRef}
         userMenuRef={userMenuRef}
       />
 
@@ -299,7 +261,13 @@ export default function TasksPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setIsModalOpen(true)}
+                onClick={() => {
+                  if (!authUser) {
+                    router.push('/auth');
+                    return;
+                  }
+                  setIsModalOpen(true);
+                }}
                 className="rounded-lg bg-[var(--chalk)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-[var(--chalk-strong)]"
               >
                 Criar tarefa

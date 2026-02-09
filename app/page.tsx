@@ -9,7 +9,6 @@ import { FileDropzone } from './components/dashboard/FileDropzone';
 import { ZoomModal } from './components/dashboard/ZoomModal';
 import { getFileKey } from './helpers/file-helpers';
 import { useAuthSession } from './hooks/use-auth-session';
-import { useAuthFlow } from './hooks/use-auth-flow';
 import { useBulkExtraction } from './hooks/use-bulk-extraction';
 import { useClassTaskTree } from './hooks/use-class-task-tree';
 import { useClickOutside } from './hooks/use-click-outside';
@@ -17,6 +16,7 @@ import { useExtractionFlow } from './hooks/use-extraction-flow';
 import { useFilePreview } from './hooks/use-file-preview';
 import { useFileSelection } from './hooks/use-file-selection';
 import { getStoredPlanUsage, type PlanUsage } from './helpers/plan-usage';
+import { signOut } from './services/auth-client';
 
 const documentTypeMap = {
   pdf_native: 'PDF Nativo',
@@ -51,23 +51,6 @@ export default function Home() {
     selectionError,
   } = useFileSelection();
   const { authUser, setAuthUser } = useAuthSession();
-  const {
-    authMode,
-    setAuthMode,
-    authName,
-    setAuthName,
-    authEmail,
-    setAuthEmail,
-    authPassword,
-    setAuthPassword,
-    authSignUpKey,
-    setAuthSignUpKey,
-    authError,
-    authLoading,
-    handleAuth,
-  } = useAuthFlow(setAuthUser, (updatedPlanUsage) => {
-    setPlanUsage(updatedPlanUsage);
-  });
 
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
@@ -75,9 +58,7 @@ export default function Home() {
   const [isZoomed, setIsZoomed] = useState(false);
   const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [isLoginMenuOpen, setIsLoginMenuOpen] = useState(false);
   const typeMenuRef = useRef<HTMLDivElement | null>(null);
-  const loginMenuRef = useRef<HTMLDivElement | null>(null);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
   const {
     bulkTotal,
@@ -128,7 +109,9 @@ export default function Home() {
     authUser,
     selectedClassId,
     selectedTaskId,
-    setIsLoginMenuOpen,
+    onRequireAuth: () => {
+      router.push('/auth');
+    },
     setIsClassTaskModalOpen,
     startBulkStream,
     setBulkTotal,
@@ -158,10 +141,8 @@ export default function Home() {
   const showStepIcons = uploadStarted;
 
   const handleSignOut = () => {
+    void signOut();
     setAuthUser(null);
-    localStorage.removeItem('sessionToken');
-    localStorage.removeItem('sessionUserName');
-    localStorage.removeItem('sessionUserId');
     sessionStorage.removeItem('userQuota');
     sessionStorage.removeItem('userUsage');
     setPlanUsage(null);
@@ -240,8 +221,6 @@ export default function Home() {
   };
 
   useClickOutside(typeMenuRef, isTypeMenuOpen, () => setIsTypeMenuOpen(false));
-  useClickOutside(loginMenuRef, isLoginMenuOpen, () => setIsLoginMenuOpen(false));
-
   useClickOutside(userMenuRef, isUserMenuOpen, () => setIsUserMenuOpen(false));
 
   // Wait for explicit user action to start processing after login.
@@ -291,25 +270,8 @@ export default function Home() {
         authUser={authUser}
         isUserMenuOpen={isUserMenuOpen}
         setIsUserMenuOpen={setIsUserMenuOpen}
-        isLoginMenuOpen={isLoginMenuOpen}
-        setIsLoginMenuOpen={setIsLoginMenuOpen}
-        authMode={authMode}
-        setAuthMode={setAuthMode}
-        authName={authName}
-        setAuthName={setAuthName}
-        authEmail={authEmail}
-        setAuthEmail={setAuthEmail}
-        authPassword={authPassword}
-        setAuthPassword={setAuthPassword}
-        authSignUpKey={authSignUpKey}
-        setAuthSignUpKey={setAuthSignUpKey}
-        authLoading={authLoading}
-        authError={authError}
-        onSubmitAuth={async (mode) => {
-          const ok = await handleAuth(mode);
-          if (ok) {
-            setIsLoginMenuOpen(false);
-          }
+        onOpenAuth={() => {
+          router.push('/auth');
         }}
         onSignOut={handleSignOut}
         onNavigateClasses={() => {
@@ -318,7 +280,6 @@ export default function Home() {
         onNavigateCriteria={() => {
           window.location.href = '/grade-criteria';
         }}
-        loginMenuRef={loginMenuRef}
         userMenuRef={userMenuRef}
       />
       <div className="mx-auto flex w-full max-w-none flex-col gap-8 px-0 pt-8">
@@ -354,7 +315,9 @@ export default function Home() {
               router.push('/classes');
             }}
             isAuthenticated={Boolean(authUser)}
-            onRequireAuth={() => setIsLoginMenuOpen(true)}
+            onRequireAuth={() => {
+              router.push('/auth');
+            }}
             showPlan={Boolean(authUser)}
             planUsage={planUsage}
           />
@@ -516,7 +479,9 @@ export default function Home() {
                 uploadFiles(selectedFiles);
               }}
               isAuthenticated={Boolean(authUser)}
-              onRequireAuth={() => setIsLoginMenuOpen(true)}
+              onRequireAuth={() => {
+                router.push('/auth');
+              }}
               error={displayError}
               isDisabled={isPlanQuotaReached}
             />

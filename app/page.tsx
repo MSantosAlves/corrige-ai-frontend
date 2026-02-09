@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppHeader } from './components/layout/AppHeader';
 import { useRouter } from 'next/navigation';
 import ClassTaskModal from './components/ClassTaskModal';
@@ -17,6 +17,7 @@ import { useFilePreview } from './hooks/use-file-preview';
 import { useFileSelection } from './hooks/use-file-selection';
 import { getStoredPlanUsage, type PlanUsage } from './helpers/plan-usage';
 import { signOut } from './services/auth-client';
+import type { ExtractionUserPayload } from './services/extractions-service';
 
 const documentTypeMap = {
   pdf_native: 'PDF Nativo',
@@ -41,6 +42,7 @@ export default function Home() {
   const [uploadCompleted, setUploadCompleted] = useState(false);
   const [uploadStarted, setUploadStarted] = useState(false);
   const [planUsage, setPlanUsage] = useState<PlanUsage | null>(null);
+  const [isUserBlocked, setIsUserBlocked] = useState(false);
   const {
     selectedFiles,
     setSelectedFiles,
@@ -51,6 +53,18 @@ export default function Home() {
     selectionError,
   } = useFileSelection();
   const { authUser, setAuthUser } = useAuthSession();
+  const handleUserStateUpdate = useCallback(
+    (userPayload: ExtractionUserPayload) => {
+      if (typeof userPayload.isBlocked !== 'boolean') {
+        return;
+      }
+      setIsUserBlocked(userPayload.isBlocked);
+      setAuthUser((current) =>
+        current ? { ...current, isBlocked: userPayload.isBlocked } : current,
+      );
+    },
+    [setAuthUser],
+  );
 
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
@@ -70,7 +84,9 @@ export default function Home() {
     isBulkInProgress,
     resetBulkProgress,
     startBulkStream,
-  } = useBulkExtraction();
+  } = useBulkExtraction({
+    onUserStateUpdate: handleUserStateUpdate,
+  });
   const documentTypes = useMemo(
     () => Object.entries(documentTypeMap) as [DocumentTypeKey, string][],
     [],
@@ -127,13 +143,18 @@ export default function Home() {
     onPlanUsageUpdate: (updatedPlanUsage) => {
       setPlanUsage(updatedPlanUsage);
     },
+    onUserStateUpdate: handleUserStateUpdate,
   });
+  const isUserAccountBlocked = Boolean(authUser?.isBlocked || isUserBlocked);
   const isPlanQuotaReached = Boolean(
     planUsage && planUsage.quota > 0 && planUsage.used >= planUsage.quota,
   );
-  const displayError = isPlanQuotaReached
-    ? 'Você atingiu o limite mensal de uso do seu plano. Por favor, faça upgrade para continuar.'
-    : selectionError || error;
+  const isDropzoneDisabled = isPlanQuotaReached || isUserAccountBlocked || isRedirecting;
+  const displayError = isUserAccountBlocked
+    ? 'Extracões indisponíveis. Entre em contato com o suporte para entender como proceder.'
+    : isPlanQuotaReached
+      ? 'Você atingiu o limite mensal de uso do seu plano. Por favor, faça upgrade para continuar.'
+      : selectionError || error;
   const envioProgress = uploadCompleted ? 100 : 0;
   const extracaoProgress = bulkExtractedPercent;
   const correcaoProgress = bulkGradedPercent;
@@ -158,6 +179,7 @@ export default function Home() {
     setIsDragging(false);
     setUploadCompleted(false);
     setUploadStarted(false);
+    setIsUserBlocked(false);
   };
 
   useEffect(() => {
@@ -169,8 +191,10 @@ export default function Home() {
 
   useEffect(() => {
     if (!authUser) {
+      setIsUserBlocked(false);
       return;
     }
+    setIsUserBlocked(Boolean(authUser.isBlocked));
     const stored = getStoredPlanUsage();
     if (stored) {
       setPlanUsage(stored);
@@ -320,6 +344,7 @@ export default function Home() {
             }}
             showPlan={Boolean(authUser)}
             planUsage={planUsage}
+            isUserBlocked={isUserAccountBlocked}
           />
 
           <div className="flex flex-col gap-6">
@@ -483,7 +508,7 @@ export default function Home() {
                 router.push('/auth');
               }}
               error={displayError}
-              isDisabled={isPlanQuotaReached}
+              isDisabled={isDropzoneDisabled}
             />
           </div>
 

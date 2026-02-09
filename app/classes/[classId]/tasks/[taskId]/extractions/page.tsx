@@ -30,7 +30,8 @@ type TaskItem = {
 type TaskExtraction = {
   id: string;
   task_id: string;
-  ocr_extraction_result: Record<string, unknown>;
+  ocr_extraction_result?: Record<string, unknown> | null;
+  status?: string;
   analysis_result: string;
   filename: string;
   created_at: string;
@@ -53,6 +54,7 @@ export default function TaskExtractionsPage() {
   const [extractions, setExtractions] = useState<TaskExtraction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [blockedDetailsText, setBlockedDetailsText] = useState<string | null>(null);
 
   useEffect(() => {
     if (!classId) {
@@ -122,6 +124,19 @@ export default function TaskExtractionsPage() {
   }, [taskId]);
 
   useClickOutside(userMenuRef, isUserMenuOpen, () => setIsUserMenuOpen(false));
+
+  useEffect(() => {
+    if (!blockedDetailsText) {
+      return;
+    }
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setBlockedDetailsText(null);
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [blockedDetailsText]);
 
   const progressPercent = useMemo(() => {
     if (extractions.length === 0) {
@@ -243,9 +258,22 @@ export default function TaskExtractionsPage() {
                   {!isLoading &&
                     !error &&
                     extractions.map((extraction) => {
-                      const statusLabel = extraction.analysis_result ? 'REVISADO' : 'EM PROCESSO';
-                      const statusTone =
-                        statusLabel === 'REVISADO'
+                      const isBlockedByOcr =
+                        extraction.ocr_extraction_result?.blocked_by_ocr === true;
+                      const isReviewed = extraction.status === 'reviwed';
+                      const blockedText =
+                        typeof extraction.ocr_extraction_result?.text === 'string' &&
+                        extraction.ocr_extraction_result.text.trim().length > 0
+                          ? extraction.ocr_extraction_result.text
+                          : 'Nenhum detalhe disponível para este bloqueio.';
+                      const statusLabel = isBlockedByOcr
+                        ? 'BLOQUEADO'
+                        : isReviewed
+                          ? 'REVISADO'
+                          : 'AGUARDANDO REVISÃO';
+                      const statusTone = isBlockedByOcr
+                        ? 'bg-[var(--paper-strong)] text-[var(--rubric)]'
+                        : isReviewed
                           ? 'bg-[var(--paper-strong)] text-[var(--chalk)]'
                           : 'bg-[var(--paper-strong)] text-[var(--amber)]';
                       return (
@@ -296,11 +324,16 @@ export default function TaskExtractionsPage() {
                                 <div className="absolute right-0 top-10 z-10 w-40 rounded-xl border border-[var(--fog)] bg-white p-2 text-xs text-[var(--ink)] shadow-sm">
                                   <button
                                     type="button"
-                                    onClick={() =>
+                                    onClick={() => {
+                                      setActiveMenuId(null);
+                                      if (isBlockedByOcr) {
+                                        setBlockedDetailsText(blockedText);
+                                        return;
+                                      }
                                       router.push(
                                         `/classes/${classId}/tasks/${taskId}/extraction/${extraction.id}`,
-                                      )
-                                    }
+                                      );
+                                    }}
                                     className="w-full rounded-lg px-3 py-2 text-left font-semibold hover:bg-[var(--wash)]"
                                   >
                                     Ver detalhes
@@ -340,6 +373,34 @@ export default function TaskExtractionsPage() {
           </aside>
         </section>
       </div>
+      {blockedDetailsText && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-6"
+          onClick={() => setBlockedDetailsText(null)}
+        >
+          <div
+            className="max-h-[80vh] w-full max-w-2xl overflow-hidden rounded-2xl border border-[var(--fog)] bg-white shadow-lg"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-[var(--fog)] px-5 py-4">
+              <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--rubric)]">
+                Conteúdo indisponível para análise
+              </h2>
+              <button
+                type="button"
+                onClick={() => setBlockedDetailsText(null)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[var(--fog)] text-[var(--graphite)] hover:border-[var(--rubric)] hover:text-[var(--rubric)]"
+                aria-label="Fechar modal"
+              >
+                ×
+              </button>
+            </div>
+            <div className="max-h-[60vh] overflow-y-auto px-5 py-4">
+              <p className="whitespace-pre-wrap text-sm text-[var(--ink)]">{blockedDetailsText}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

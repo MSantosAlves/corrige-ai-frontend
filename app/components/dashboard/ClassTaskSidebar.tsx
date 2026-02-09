@@ -29,6 +29,7 @@ type ClassTaskSidebarProps = {
   onRequireAuth: () => void;
   showPlan: boolean;
   planUsage: { used: number; quota: number } | null;
+  isUserBlocked: boolean;
 };
 
 export const ClassTaskSidebar = ({
@@ -48,8 +49,9 @@ export const ClassTaskSidebar = ({
   onRequireAuth,
   showPlan,
   planUsage,
+  isUserBlocked,
 }: ClassTaskSidebarProps) => (
-  <aside className="flex max-h-[calc(100vh-6rem)] self-start flex-col gap-4 overflow-hidden rounded-2xl border border-[var(--fog)] bg-[var(--paper-strong)] p-4">
+  <aside className="flex max-h-[calc(100vh-6rem)] self-start flex-col gap-4 overflow-visible rounded-2xl border border-[var(--fog)] bg-[var(--paper-strong)] p-4">
     <div className="flex items-start justify-between gap-3">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--chalk)]">
@@ -163,23 +165,47 @@ export const ClassTaskSidebar = ({
               Gratuito
             </span>
           </div>
-          <div className="mt-2 flex items-center justify-between text-xs text-[var(--graphite)]">
+          <div
+            className={`mt-2 flex items-center justify-between text-xs ${
+              isUserBlocked ? 'text-[var(--graphite)] opacity-60' : 'text-[var(--graphite)]'
+            }`}
+          >
             <span>Uso mensal</span>
-            <span className="font-semibold text-[var(--ink)]">
+            <span
+              className={`font-semibold ${
+                isUserBlocked ? 'text-[var(--graphite)]' : 'text-[var(--ink)]'
+              }`}
+            >
               {planUsage ? `${planUsage.used}/${planUsage.quota}` : '—'}
             </span>
           </div>
-          <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-[var(--wash)]">
+          <div
+            className={`mt-2 h-2 w-full overflow-hidden rounded-full ${
+              isUserBlocked ? 'bg-[var(--fog)]' : 'bg-[var(--wash)]'
+            }`}
+          >
             <div
-              className="h-full rounded-full bg-[var(--chalk)]"
+              className={`h-full rounded-full ${
+                isUserBlocked ? 'bg-[var(--fog)]' : 'bg-[var(--chalk)]'
+              }`}
               style={{
                 width:
-                  planUsage && planUsage.quota > 0
+                  !isUserBlocked && planUsage && planUsage.quota > 0
                     ? `${Math.min(100, Math.round((planUsage.used / planUsage.quota) * 100))}%`
                     : '0%',
               }}
             />
           </div>
+          {isUserBlocked && (
+            <div className="group relative mt-2 flex w-full justify-center">
+              <span className="inline-flex cursor-help rounded-full border border-[var(--rubric)] bg-[var(--paper)] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--rubric)]">
+                Extracões indisponíveis
+              </span>
+              <span className="pointer-events-none absolute bottom-full left-1/2 z-[120] mb-2 hidden w-56 -translate-x-1/2 rounded-md border border-[var(--fog)] bg-white px-2 py-1 text-[10px] normal-case tracking-normal text-[var(--ink)] shadow-sm group-hover:block">
+                Entre em contato com o suporte para entender como proceder.
+              </span>
+            </div>
+          )}
         </div>
       </>
     )}

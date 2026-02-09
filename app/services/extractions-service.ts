@@ -1,7 +1,15 @@
 import { apiClient } from './api-client';
 
+export type ExtractionUserPayload = {
+  isBlocked?: boolean;
+  blockInfo?: unknown | null;
+};
+
 export type BulkExtractionResponse = {
   batch_id?: string;
+  status?: string;
+  user?: ExtractionUserPayload;
+  items?: Record<string, unknown>[];
   progress?: { completed?: number; total?: number };
   error?: string;
   planQuota?: number;

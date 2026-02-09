@@ -11,7 +11,8 @@ import { signOut } from '../../../../../../services/auth-client';
 type TaskExtraction = {
   id: string;
   task_id: string;
-  ocr_extraction_result: Record<string, unknown>;
+  ocr_extraction_result?: Record<string, unknown> | null;
+  status?: string;
   analysis_result: string;
   filename: string;
   created_at: string;
@@ -85,6 +86,18 @@ export default function ExtractionDetailPage() {
     return extractedText.trim().split(/\s+/).length;
   }, [extractedText]);
 
+  const statusBadge = useMemo(() => {
+    const isBlockedByOcr = extraction?.ocr_extraction_result?.blocked_by_ocr === true;
+    const isReviewed = extraction?.status === 'reviwed';
+    const label = isBlockedByOcr ? 'BLOQUEADO' : isReviewed ? 'REVISADO' : 'AGUARDANDO REVISÃO';
+    const tone = isBlockedByOcr
+      ? 'bg-[var(--paper-strong)] text-[var(--rubric)]'
+      : isReviewed
+        ? 'bg-[var(--paper-strong)] text-[var(--chalk)]'
+        : 'bg-[var(--paper-strong)] text-[var(--amber)]';
+    return { label, tone };
+  }, [extraction]);
+
   return (
     <main className="teched-main relative min-h-screen bg-[var(--paper)] px-0 pb-12 pt-8 text-[var(--ink)]">
       <AppHeader
@@ -128,8 +141,11 @@ export default function ExtractionDetailPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="rounded-full border border-[var(--fog)] bg-[var(--paper)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--chalk)]">
-                Revisado
+              <span
+                className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${statusBadge.tone}`}
+              >
+                <span className="h-2 w-2 rounded-full bg-current" />
+                {statusBadge.label}
               </span>
             </div>
           </div>

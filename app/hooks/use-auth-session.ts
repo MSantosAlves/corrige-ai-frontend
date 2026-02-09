@@ -8,6 +8,7 @@ export type AuthUser = {
   name: string;
   email?: string;
   emailVerified?: boolean;
+  isBlocked?: boolean;
 } | null;
 
 type SessionUser = {
@@ -15,6 +16,7 @@ type SessionUser = {
   name?: string | null;
   email?: string | null;
   emailVerified?: boolean | null;
+  is_blocked?: boolean | null;
   plan_quota?: number | null;
   plan_usage?: number | null;
 };
@@ -34,6 +36,7 @@ const mapSessionUser = (user?: SessionUser | null): AuthUser => {
     name: displayName,
     email: user.email ?? undefined,
     emailVerified: user.emailVerified ?? undefined,
+    isBlocked: Boolean(user.is_blocked),
   };
 };
 

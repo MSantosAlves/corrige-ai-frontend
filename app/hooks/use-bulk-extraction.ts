@@ -2,20 +2,27 @@ import { useMemo, useState } from 'react';
 
 import { useSseStream } from './use-sse-stream';
 import { startBulkExtractionStream } from '../services/extractions-service';
+import type { ExtractionUserPayload } from '../services/extractions-service';
 
-export const useBulkExtraction = () => {
+type BulkProgressPayload = {
+  user?: ExtractionUserPayload;
+  progress?: {
+    completed?: number;
+    total?: number;
+    extracted?: number;
+    graded?: number;
+  };
+};
+
+export const useBulkExtraction = (params?: {
+  onUserStateUpdate?: (payload: ExtractionUserPayload) => void;
+}) => {
+  const { onUserStateUpdate } = params ?? {};
   const [bulkTotal, setBulkTotal] = useState(0);
   const [bulkCompleted, setBulkCompleted] = useState(0);
   const [bulkExtracted, setBulkExtracted] = useState(0);
   const [bulkGraded, setBulkGraded] = useState(0);
-  const { startStream, closeStream } = useSseStream<{
-    progress?: {
-      completed?: number;
-      total?: number;
-      extracted?: number;
-      graded?: number;
-    };
-  }>();
+  const { startStream, closeStream } = useSseStream<BulkProgressPayload>();
 
   const isBulkInProgress = bulkTotal > 0 && bulkCompleted < bulkTotal;
   const bulkProgressPercent = useMemo(() => {
@@ -47,14 +54,10 @@ export const useBulkExtraction = () => {
     closeStream();
   };
 
-  const updateProgressFromPayload = (payload: {
-    progress?: {
-      completed?: number;
-      total?: number;
-      extracted?: number;
-      graded?: number;
-    };
-  }) => {
+  const updateProgressFromPayload = (payload: BulkProgressPayload) => {
+    if (payload.user) {
+      onUserStateUpdate?.(payload.user);
+    }
     const total = payload.progress?.total ?? 0;
     const completed = payload.progress?.completed ?? 0;
     const extracted = payload.progress?.extracted ?? 0;

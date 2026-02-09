@@ -55,7 +55,11 @@ export const FileDropzone = ({
   error,
   isDisabled,
 }: FileDropzoneProps) => (
-  <div className="rounded-2xl border border-[var(--fog)] bg-[var(--paper-soft)] p-6 sm:p-8">
+  <div
+    className={`rounded-2xl border border-[var(--fog)] bg-[var(--paper-soft)] p-6 sm:p-8 ${
+      isDisabled ? 'opacity-75' : ''
+    }`}
+  >
     <div className="flex items-start justify-between gap-4">
       <div>
         <h2 className="text-xl font-semibold text-[var(--ink)]">Bandeja de envio</h2>
@@ -165,7 +169,8 @@ export const FileDropzone = ({
                 <button
                   type="button"
                   onClick={() => onRemoveFile(fileKey)}
-                  className="text-[var(--graphite)] transition hover:text-[var(--rubric)]"
+                  disabled={isDisabled}
+                  className="text-[var(--graphite)] transition hover:text-[var(--rubric)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-[var(--graphite)]"
                   aria-label={`Remover ${file.name}`}
                 >
                   ×
@@ -186,8 +191,14 @@ export const FileDropzone = ({
           <div className="relative" ref={typeMenuRef}>
             <button
               type="button"
-              onClick={() => setIsTypeMenuOpen(!isTypeMenuOpen)}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--fog)] bg-white px-4 py-2 text-xs font-semibold text-[var(--ink)] shadow-sm transition hover:border-[var(--chalk)]"
+              onClick={() => {
+                if (isDisabled) {
+                  return;
+                }
+                setIsTypeMenuOpen(!isTypeMenuOpen);
+              }}
+              disabled={isDisabled}
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--fog)] bg-white px-4 py-2 text-xs font-semibold text-[var(--ink)] shadow-sm transition hover:border-[var(--chalk)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-[var(--fog)]"
             >
               {documentType
                 ? documentTypes.find(([key]) => key === documentType)?.[1]

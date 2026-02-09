@@ -1,6 +1,10 @@
 import { useRef, useState } from 'react';
 
-import { extractTextBulk, type BulkExtractionResponse } from '../services/extractions-service';
+import {
+  extractTextBulk,
+  type BulkExtractionResponse,
+  type ExtractionUserPayload,
+} from '../services/extractions-service';
 import { normalizeJpepgFile } from '../helpers/file-helpers';
 import { persistPlanUsage, type PlanUsage } from '../helpers/plan-usage';
 
@@ -25,6 +29,7 @@ export const useExtractionFlow = (params: {
   setUploadStarted: (value: boolean) => void;
   onExtractionComplete?: (payload: { classId: string; taskId: string; mode: 'bulk' }) => void;
   onPlanUsageUpdate?: (payload: PlanUsage) => void;
+  onUserStateUpdate?: (payload: ExtractionUserPayload) => void;
 }) => {
   const {
     documentType,
@@ -41,6 +46,7 @@ export const useExtractionFlow = (params: {
     setUploadStarted,
     onExtractionComplete,
     onPlanUsageUpdate,
+    onUserStateUpdate,
   } = params;
 
   const [isUploading, setIsUploading] = useState(false);
@@ -130,11 +136,20 @@ export const useExtractionFlow = (params: {
         formData.append('task_id', taskId);
       }
       const payload = (await extractTextBulk(formData)) as BulkExtractionResponse;
-      const total = payload.progress?.total ?? 0;
+      if (payload.user) {
+        onUserStateUpdate?.(payload.user);
+      }
+      if (payload.user?.isBlocked) {
+        setUploadCompleted(false);
+        setError('Extracões indisponíveis. Entre em contato com o suporte para entender como proceder.');
+        return;
+      }
+
+      const total = payload.progress?.total ?? payload.items?.length ?? 0;
       const completed = payload.progress?.completed ?? 0;
       if (total > 0) {
         setBulkTotal(total);
-        setBulkCompleted(completed);
+        setBulkCompleted(Math.min(completed, total));
       }
       setUploadCompleted(true);
       const updatedPlanUsage = persistPlanUsage(payload);

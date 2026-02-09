@@ -45,8 +45,7 @@ export default function ClassTaskModal({
   initialTab,
 }: ClassTaskModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>('select');
-  const effectiveUserId =
-    userId ?? (typeof window !== 'undefined' ? localStorage.getItem('sessionUserId') : null);
+  const effectiveUserId = userId ?? null;
 
   // Select tab states
   const [classes, setClasses] = useState<Class[]>([]);
@@ -67,7 +66,7 @@ export default function ClassTaskModal({
 
   // Load classes when modal opens and user is logged in
   useEffect(() => {
-    if (!isOpen || !userId) {
+    if (!isOpen || !effectiveUserId) {
       return;
     }
 
@@ -75,7 +74,7 @@ export default function ClassTaskModal({
       try {
         setIsLoadingClasses(true);
         setClassesError('');
-        const data = (await listClasses(userId)) as { items?: Class[] };
+        const data = (await listClasses(effectiveUserId)) as { items?: Class[] };
         setClasses(data.items ?? []);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Erro ao carregar turmas';
@@ -86,7 +85,7 @@ export default function ClassTaskModal({
     };
 
     loadClasses();
-  }, [isOpen, userId]);
+  }, [effectiveUserId, isOpen]);
 
   // Initialize selected values when modal opens
   useEffect(() => {

@@ -3,47 +3,24 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppHeader } from '../components/layout/AppHeader';
-import { useAuthFlow } from '../hooks/use-auth-flow';
 import { useAuthSession } from '../hooks/use-auth-session';
 import { useClickOutside } from '../hooks/use-click-outside';
 import { listCriteria, type GradeCriteria } from '../services/criteria-service';
+import { signOut } from '../services/auth-client';
 
 type FilterMode = 'mine' | 'all';
 
 export default function GradeCriteriaPage() {
   const router = useRouter();
   const { authUser, setAuthUser } = useAuthSession();
-  const {
-    authMode,
-    setAuthMode,
-    authName,
-    setAuthName,
-    authEmail,
-    setAuthEmail,
-    authPassword,
-    setAuthPassword,
-    authSignUpKey,
-    setAuthSignUpKey,
-    authError,
-    authLoading,
-    handleAuth,
-  } = useAuthFlow(setAuthUser);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isLoginMenuOpen, setIsLoginMenuOpen] = useState(false);
-  const loginMenuRef = useRef<HTMLDivElement | null>(null);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
   const [items, setItems] = useState<GradeCriteria[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [filterMode, setFilterMode] = useState<FilterMode>('mine');
-  const [userId, setUserId] = useState<string | null>(null);
 
-  useClickOutside(loginMenuRef, isLoginMenuOpen, () => setIsLoginMenuOpen(false));
   useClickOutside(userMenuRef, isUserMenuOpen, () => setIsUserMenuOpen(false));
-
-  useEffect(() => {
-    setUserId(localStorage.getItem('sessionUserId'));
-  }, []);
 
   useEffect(() => {
     const loadCriteria = async () => {
@@ -53,8 +30,8 @@ export default function GradeCriteriaPage() {
         const includePublic = filterMode === 'all';
         const payload = await listCriteria({ includePublic });
         const filtered =
-          filterMode === 'mine' && userId
-            ? (payload.items ?? []).filter((item) => item.user_id === userId)
+          filterMode === 'mine' && authUser?.id
+            ? (payload.items ?? []).filter((item) => item.user_id === authUser.id)
             : (payload.items ?? []);
         setItems(filtered);
       } catch (loadError) {
@@ -67,7 +44,7 @@ export default function GradeCriteriaPage() {
     };
 
     loadCriteria();
-  }, [filterMode, userId]);
+  }, [authUser?.id, filterMode]);
 
   return (
     <main className="teched-main relative min-h-screen bg-[var(--paper)] px-0 pb-12 pt-8 text-[var(--ink)]">
@@ -75,31 +52,12 @@ export default function GradeCriteriaPage() {
         authUser={authUser}
         isUserMenuOpen={isUserMenuOpen}
         setIsUserMenuOpen={setIsUserMenuOpen}
-        isLoginMenuOpen={isLoginMenuOpen}
-        setIsLoginMenuOpen={setIsLoginMenuOpen}
-        authMode={authMode}
-        setAuthMode={setAuthMode}
-        authName={authName}
-        setAuthName={setAuthName}
-        authEmail={authEmail}
-        setAuthEmail={setAuthEmail}
-        authPassword={authPassword}
-        setAuthPassword={setAuthPassword}
-        authSignUpKey={authSignUpKey}
-        setAuthSignUpKey={setAuthSignUpKey}
-        authLoading={authLoading}
-        authError={authError}
-        onSubmitAuth={async (mode) => {
-          const ok = await handleAuth(mode);
-          if (ok) {
-            setIsLoginMenuOpen(false);
-          }
+        onOpenAuth={() => {
+          router.push('/auth');
         }}
         onSignOut={() => {
+          void signOut();
           setAuthUser(null);
-          localStorage.removeItem('sessionToken');
-          localStorage.removeItem('sessionUserName');
-          localStorage.removeItem('sessionUserId');
         }}
         onNavigateClasses={() => {
           router.push('/classes');
@@ -107,7 +65,6 @@ export default function GradeCriteriaPage() {
         onNavigateCriteria={() => {
           router.push('/grade-criteria');
         }}
-        loginMenuRef={loginMenuRef}
         userMenuRef={userMenuRef}
       />
 
@@ -220,7 +177,6 @@ export default function GradeCriteriaPage() {
           </div>
         </section>
       </div>
-
     </main>
   );
 }

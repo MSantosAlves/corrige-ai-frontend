@@ -4,9 +4,9 @@ import { useRouter, useParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getExtraction } from '../../../../../../services/extractions-service';
 import { AppHeader } from '../../../../../../components/layout/AppHeader';
-import { useAuthFlow } from '../../../../../../hooks/use-auth-flow';
 import { useAuthSession } from '../../../../../../hooks/use-auth-session';
 import { useClickOutside } from '../../../../../../hooks/use-click-outside';
+import { signOut } from '../../../../../../services/auth-client';
 
 type TaskExtraction = {
   id: string;
@@ -23,24 +23,7 @@ export default function ExtractionDetailPage() {
   const params = useParams();
   const extractionId = params?.extractionId as string;
   const { authUser, setAuthUser } = useAuthSession();
-  const {
-    authMode,
-    setAuthMode,
-    authName,
-    setAuthName,
-    authEmail,
-    setAuthEmail,
-    authPassword,
-    setAuthPassword,
-    authSignUpKey,
-    setAuthSignUpKey,
-    authError,
-    authLoading,
-    handleAuth,
-  } = useAuthFlow(setAuthUser);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isLoginMenuOpen, setIsLoginMenuOpen] = useState(false);
-  const loginMenuRef = useRef<HTMLDivElement | null>(null);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
 
   const [extraction, setExtraction] = useState<TaskExtraction | null>(null);
@@ -48,7 +31,6 @@ export default function ExtractionDetailPage() {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('Relatorio');
 
-  useClickOutside(loginMenuRef, isLoginMenuOpen, () => setIsLoginMenuOpen(false));
   useClickOutside(userMenuRef, isUserMenuOpen, () => setIsUserMenuOpen(false));
 
   useEffect(() => {
@@ -109,31 +91,12 @@ export default function ExtractionDetailPage() {
         authUser={authUser}
         isUserMenuOpen={isUserMenuOpen}
         setIsUserMenuOpen={setIsUserMenuOpen}
-        isLoginMenuOpen={isLoginMenuOpen}
-        setIsLoginMenuOpen={setIsLoginMenuOpen}
-        authMode={authMode}
-        setAuthMode={setAuthMode}
-        authName={authName}
-        setAuthName={setAuthName}
-        authEmail={authEmail}
-        setAuthEmail={setAuthEmail}
-        authPassword={authPassword}
-        setAuthPassword={setAuthPassword}
-        authSignUpKey={authSignUpKey}
-        setAuthSignUpKey={setAuthSignUpKey}
-        authLoading={authLoading}
-        authError={authError}
-        onSubmitAuth={async (mode) => {
-          const ok = await handleAuth(mode);
-          if (ok) {
-            setIsLoginMenuOpen(false);
-          }
+        onOpenAuth={() => {
+          router.push('/auth');
         }}
         onSignOut={() => {
+          void signOut();
           setAuthUser(null);
-          localStorage.removeItem('sessionToken');
-          localStorage.removeItem('sessionUserName');
-          localStorage.removeItem('sessionUserId');
         }}
         onNavigateClasses={() => {
           router.push('/classes');
@@ -141,7 +104,6 @@ export default function ExtractionDetailPage() {
         onNavigateCriteria={() => {
           router.push('/grade-criteria');
         }}
-        loginMenuRef={loginMenuRef}
         userMenuRef={userMenuRef}
       />
 

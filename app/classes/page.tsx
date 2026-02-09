@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { AppHeader } from '../components/layout/AppHeader';
-import { useAuthFlow } from '../hooks/use-auth-flow';
 import { useAuthSession } from '../hooks/use-auth-session';
 import { useClickOutside } from '../hooks/use-click-outside';
 import { createClass, listClasses } from '../services/classes-service';
+import { signOut } from '../services/auth-client';
 
 type ClassItem = {
   id: string;
@@ -18,24 +18,7 @@ type ClassItem = {
 export default function ClassesPage() {
   const router = useRouter();
   const { authUser, setAuthUser } = useAuthSession();
-  const {
-    authMode,
-    setAuthMode,
-    authName,
-    setAuthName,
-    authEmail,
-    setAuthEmail,
-    authPassword,
-    setAuthPassword,
-    authSignUpKey,
-    setAuthSignUpKey,
-    authError,
-    authLoading,
-    handleAuth,
-  } = useAuthFlow(setAuthUser);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isLoginMenuOpen, setIsLoginMenuOpen] = useState(false);
-  const loginMenuRef = useRef<HTMLDivElement | null>(null);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -44,11 +27,10 @@ export default function ClassesPage() {
   const [newClassName, setNewClassName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
-  useClickOutside(loginMenuRef, isLoginMenuOpen, () => setIsLoginMenuOpen(false));
   useClickOutside(userMenuRef, isUserMenuOpen, () => setIsUserMenuOpen(false));
 
   const handleCreateClass = async () => {
-    const userId = localStorage.getItem('sessionUserId');
+    const userId = authUser?.id;
     if (!userId || !newClassName.trim()) {
       return;
     }
@@ -72,8 +54,7 @@ export default function ClassesPage() {
   };
 
   useEffect(() => {
-    const userId = localStorage.getItem('sessionUserId');
-    if (!userId) {
+    if (!authUser?.id) {
       return;
     }
 
@@ -81,7 +62,7 @@ export default function ClassesPage() {
       try {
         setIsLoading(true);
         setError('');
-        const payload = (await listClasses(userId)) as { items?: ClassItem[] };
+        const payload = (await listClasses(authUser.id)) as { items?: ClassItem[] };
         setClasses(payload.items ?? []);
       } catch (loadError) {
         const message =
@@ -93,7 +74,7 @@ export default function ClassesPage() {
     };
 
     loadClasses();
-  }, []);
+  }, [authUser?.id]);
 
   return (
     <main className="teched-main relative min-h-screen bg-[var(--paper)] px-0 pb-12 pt-8 text-[var(--ink)]">
@@ -101,31 +82,12 @@ export default function ClassesPage() {
         authUser={authUser}
         isUserMenuOpen={isUserMenuOpen}
         setIsUserMenuOpen={setIsUserMenuOpen}
-        isLoginMenuOpen={isLoginMenuOpen}
-        setIsLoginMenuOpen={setIsLoginMenuOpen}
-        authMode={authMode}
-        setAuthMode={setAuthMode}
-        authName={authName}
-        setAuthName={setAuthName}
-        authEmail={authEmail}
-        setAuthEmail={setAuthEmail}
-        authPassword={authPassword}
-        setAuthPassword={setAuthPassword}
-        authSignUpKey={authSignUpKey}
-        setAuthSignUpKey={setAuthSignUpKey}
-        authLoading={authLoading}
-        authError={authError}
-        onSubmitAuth={async (mode) => {
-          const ok = await handleAuth(mode);
-          if (ok) {
-            setIsLoginMenuOpen(false);
-          }
+        onOpenAuth={() => {
+          router.push('/auth');
         }}
         onSignOut={() => {
+          void signOut();
           setAuthUser(null);
-          localStorage.removeItem('sessionToken');
-          localStorage.removeItem('sessionUserName');
-          localStorage.removeItem('sessionUserId');
         }}
         onNavigateClasses={() => {
           router.push('/classes');
@@ -133,7 +95,6 @@ export default function ClassesPage() {
         onNavigateCriteria={() => {
           router.push('/grade-criteria');
         }}
-        loginMenuRef={loginMenuRef}
         userMenuRef={userMenuRef}
       />
 
@@ -162,7 +123,13 @@ export default function ClassesPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setIsCreateModalOpen(true)}
+                onClick={() => {
+                  if (!authUser) {
+                    router.push('/auth');
+                    return;
+                  }
+                  setIsCreateModalOpen(true);
+                }}
                 className="rounded-lg bg-[var(--chalk)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-[var(--chalk-strong)]"
               >
                 Criar turma

@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { AppHeader } from '../../components/layout/AppHeader';
-import { useAuthFlow } from '../../hooks/use-auth-flow';
 import { useAuthSession } from '../../hooks/use-auth-session';
 import { useClickOutside } from '../../hooks/use-click-outside';
 import {
@@ -11,30 +10,14 @@ import {
   getCriteriaById,
   type GradeCriteria,
 } from '../../services/criteria-service';
+import { signOut } from '../../services/auth-client';
 
 export default function GradeCriteriaDetailPage() {
   const router = useRouter();
   const params = useParams();
   const criteriaId = params?.criteriaId as string;
   const { authUser, setAuthUser } = useAuthSession();
-  const {
-    authMode,
-    setAuthMode,
-    authName,
-    setAuthName,
-    authEmail,
-    setAuthEmail,
-    authPassword,
-    setAuthPassword,
-    authSignUpKey,
-    setAuthSignUpKey,
-    authError,
-    authLoading,
-    handleAuth,
-  } = useAuthFlow(setAuthUser);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isLoginMenuOpen, setIsLoginMenuOpen] = useState(false);
-  const loginMenuRef = useRef<HTMLDivElement | null>(null);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
   const [criteria, setCriteria] = useState<GradeCriteria | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -43,7 +26,6 @@ export default function GradeCriteriaDetailPage() {
   const [isCopying, setIsCopying] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
-  useClickOutside(loginMenuRef, isLoginMenuOpen, () => setIsLoginMenuOpen(false));
   useClickOutside(userMenuRef, isUserMenuOpen, () => setIsUserMenuOpen(false));
 
   useEffect(() => {
@@ -73,6 +55,10 @@ export default function GradeCriteriaDetailPage() {
     if (!criteria) {
       return;
     }
+    if (!authUser) {
+      router.push('/auth');
+      return;
+    }
     try {
       setIsCopying(true);
       setCopyError('');
@@ -100,31 +86,12 @@ export default function GradeCriteriaDetailPage() {
         authUser={authUser}
         isUserMenuOpen={isUserMenuOpen}
         setIsUserMenuOpen={setIsUserMenuOpen}
-        isLoginMenuOpen={isLoginMenuOpen}
-        setIsLoginMenuOpen={setIsLoginMenuOpen}
-        authMode={authMode}
-        setAuthMode={setAuthMode}
-        authName={authName}
-        setAuthName={setAuthName}
-        authEmail={authEmail}
-        setAuthEmail={setAuthEmail}
-        authPassword={authPassword}
-        setAuthPassword={setAuthPassword}
-        authSignUpKey={authSignUpKey}
-        setAuthSignUpKey={setAuthSignUpKey}
-        authLoading={authLoading}
-        authError={authError}
-        onSubmitAuth={async (mode) => {
-          const ok = await handleAuth(mode);
-          if (ok) {
-            setIsLoginMenuOpen(false);
-          }
+        onOpenAuth={() => {
+          router.push('/auth');
         }}
         onSignOut={() => {
+          void signOut();
           setAuthUser(null);
-          localStorage.removeItem('sessionToken');
-          localStorage.removeItem('sessionUserName');
-          localStorage.removeItem('sessionUserId');
         }}
         onNavigateClasses={() => {
           router.push('/classes');
@@ -132,7 +99,6 @@ export default function GradeCriteriaDetailPage() {
         onNavigateCriteria={() => {
           router.push('/grade-criteria');
         }}
-        loginMenuRef={loginMenuRef}
         userMenuRef={userMenuRef}
       />
 
